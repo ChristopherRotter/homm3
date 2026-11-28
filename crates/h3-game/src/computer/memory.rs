@@ -9,11 +9,13 @@
 //! which the computer's turn start clears for every hero and garrison hero). Since T2d the
 //! records of its turn start ([`Record`]: the reserve, the weights' inputs, the mean weight, the
 //! heroes' values per unit, the threats), kept until its next turn: its answers in the other
-//! players' turns read the last start's (survey §4.6). The heroes' destinations, the only fields
-//! the original carries into the next turn (+0x35, +0x41), come with the planning (T2i).
+//! players' turns read the last start's (survey §4.6). Since T2i the heroes' kept plans
+//! ([`Plan`]: the destination, the cost beyond the day's points and the must-go, +0x35 to +0x43),
+//! the only fields the original carries into the next turn, kept outside the turn's frame.
 
 use alloc::vec::Vec;
 
+use h3_adventure::Pos;
 use h3_contracts::{HeroId, TownId};
 use h3_kernel::hash::{CanonicalHash, StateHasher, hash_of};
 
@@ -23,8 +25,9 @@ use super::start::{HeroValues, Record};
 /// Version of [`Memory`]'s canonical encoding (`docs/08-work-process.md`, "Versions"; owned by
 /// the ai lane): bumped with any change to what it holds or how it is written. v1 (E31 T2a): the
 /// turn's frame; v2 (T2d): its start's records; v3 (T2e): the heroes' spell gains beside their
-/// experience weights; v4 (T2f): the artifacts' mean after the mean weight.
-pub const MEMORY_ENCODING_VERSION: u32 = 4;
+/// experience weights; v4 (T2f): the artifacts' mean after the mean weight; v5 (T2i): the heroes'
+/// kept plans after the turn.
+pub const MEMORY_ENCODING_VERSION: u32 = 5;
 
 /// A computer player's memory (ADR-0030 point 5; CPU-TRN-005): empty at the player's first turn
 /// in a game (the original's records survive from an earlier game, a quirk candidate not
@@ -34,6 +37,56 @@ pub const MEMORY_ENCODING_VERSION: u32 = 4;
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Memory {
     turn: Option<Turn>,
+    plans: Plans,
+}
+
+/// A hero's kept plan (the original's hero +0x35 to +0x43, written at the end of every
+/// `ai_hero_destination` 0x42E0B0, 0x42EBAB..0x42EBE9): kept while the destination is some (a
+/// hero whose destination is none, −1, has no plan: no reader of +0x41 or +0x43 asks one then).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) struct Plan {
+    /// The destination (+0x35, +0x39, +0x3D).
+    pub(super) destination: Pos,
+    /// The cost beyond the points left the destination's node lies (+0x41, a word).
+    pub(super) beyond: u16,
+    /// Whether the destination is a must-go (+0x43).
+    pub(super) must_go: bool,
+}
+
+/// The heroes' kept plans, by hero in ascending id order.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub(super) struct Plans(Vec<(HeroId, Plan)>);
+
+impl Plans {
+    /// `hero`'s kept plan, if it has one.
+    pub(super) fn get(&self, hero: HeroId) -> Option<Plan> {
+        self.0
+            .binary_search_by_key(&hero, |&(h, _)| h)
+            .ok()
+            .map(|at| self.0[at].1)
+    }
+
+    /// Keeps `plan` as `hero`'s (none: drops its plan).
+    pub(super) fn set(&mut self, hero: HeroId, plan: Option<Plan>) {
+        match (self.0.binary_search_by_key(&hero, |&(h, _)| h), plan) {
+            (Ok(at), Some(plan)) => self.0[at].1 = plan,
+            (Ok(at), None) => {
+                self.0.remove(at);
+            }
+            (Err(at), Some(plan)) => self.0.insert(at, (hero, plan)),
+            (Err(_), None) => {}
+        }
+    }
+
+    /// The turn start's (`ai_turn_start` 0x4297C0 at 0x42980E and 0x429873): every must-go
+    /// cleared; the plans of heroes `owns` refuses dropped (the agent's: the original resets a
+    /// hero's fields when it is hired, `hero_reset`).
+    fn start(&mut self, owns: impl Fn(HeroId) -> bool) {
+        self.0.retain(|&(hero, _)| owns(hero));
+        for (_, plan) in &mut self.0 {
+            plan.must_go = false;
+        }
+    }
 }
 
 /// Why [`Memory::decode`] refused its bytes.
@@ -43,7 +96,8 @@ pub enum MemoryError {
     Version(u32),
     /// The bytes end early, hold a value outside its range (a tag, a pass, a flag, the done
     /// heroes not in ascending order, a rate's row outside 1 to 10, a record's heroes or towns
-    /// not in ascending order, a threat or a town's count of 0) or go on after the memory.
+    /// not in ascending order, a threat or a town's count of 0, the plans' heroes not in
+    /// ascending order, a must-go not 0 or 1) or go on after the memory.
     Malformed,
 }
 
@@ -117,14 +171,29 @@ impl Turn {
 impl Memory {
     /// An empty memory: no turn played yet.
     pub const fn new() -> Self {
-        Self { turn: None }
+        Self {
+            turn: None,
+            plans: Plans(Vec::new()),
+        }
     }
 
-    /// The frame of the turn of `day`, started by `start` when the memory holds another day's or
-    /// none (the computer's turn start, survey §1.5: every done mark cleared).
-    pub(super) fn turn_of(&mut self, day: u32, start: impl FnOnce() -> Turn) -> &mut Turn {
-        let turn = self.turn.take().filter(|turn| turn.day == day);
-        self.turn.insert(turn.unwrap_or_else(start))
+    /// The frame of the turn of `day` and the heroes' kept plans, the frame started by `start`
+    /// when the memory holds another day's or none (the computer's turn start, survey §1.5: every
+    /// done mark and must-go cleared, the plans of the heroes `owns` refuses dropped).
+    pub(super) fn turn_of(
+        &mut self,
+        day: u32,
+        start: impl FnOnce() -> Turn,
+        owns: impl Fn(HeroId) -> bool,
+    ) -> (&mut Turn, &mut Plans) {
+        let turn = match self.turn.take().filter(|turn| turn.day == day) {
+            Some(turn) => turn,
+            None => {
+                self.plans.start(owns);
+                start()
+            }
+        };
+        (self.turn.insert(turn), &mut self.plans)
     }
 
     /// The canonical encoding (v4, [`MEMORY_ENCODING_VERSION`]), little-endian: the version
@@ -138,7 +207,9 @@ impl Memory {
     /// f32 bits u32, then the spell gains as i32: one Spell Power, one round, a Knowledge point,
     /// the mana doubled, the mana refilled),
     /// the threats (the hero's id u16, the threat i32, not 0) and the towns' counts (the town's
-    /// id u16, the count u8, not 0).
+    /// id u16, the count u8, not 0); last the kept plans, their number (u32) and each in ascending
+    /// hero order: the hero's id (u16), the destination's column and row (u16 each) and level
+    /// (u8), the cost beyond (u16) and the must-go (u8: 0 or 1).
     pub fn encode(&self) -> Vec<u8> {
         let mut out = Vec::with_capacity(16);
         out.extend_from_slice(&MEMORY_ENCODING_VERSION.to_le_bytes());
@@ -163,6 +234,16 @@ impl Memory {
                 encode_record(&mut out, &turn.record);
             }
         }
+        write_count(&mut out, self.plans.0.len());
+        for (hero, plan) in &self.plans.0 {
+            out.extend_from_slice(&hero.raw().to_le_bytes());
+            let Pos { x, y, level } = plan.destination;
+            out.extend_from_slice(&x.to_le_bytes());
+            out.extend_from_slice(&y.to_le_bytes());
+            out.push(level);
+            out.extend_from_slice(&plan.beyond.to_le_bytes());
+            out.push(u8::from(plan.must_go));
+        }
         out
     }
 
@@ -183,8 +264,9 @@ impl Memory {
             [1] => Some(reader.turn().ok_or(MemoryError::Malformed)?),
             _ => return Err(MemoryError::Malformed),
         };
+        let plans = reader.plans().ok_or(MemoryError::Malformed)?;
         if reader.0.is_empty() {
-            Ok(Self { turn })
+            Ok(Self { turn, plans })
         } else {
             Err(MemoryError::Malformed)
         }
@@ -245,6 +327,30 @@ impl Reader<'_> {
             asleep,
             record,
         })
+    }
+
+    /// The kept plans ([`Memory::encode`]).
+    fn plans(&mut self) -> Option<Plans> {
+        let plans = self.ascending(|reader| {
+            let hero = reader.hero()?;
+            let [x0, x1, y0, y1, level, b0, b1, must_go] = reader.take()?;
+            let must_go = match must_go {
+                0 => false,
+                1 => true,
+                _ => return None,
+            };
+            let plan = Plan {
+                destination: Pos::new(
+                    u16::from_le_bytes([x0, x1]),
+                    u16::from_le_bytes([y0, y1]),
+                    level,
+                ),
+                beyond: u16::from_le_bytes([b0, b1]),
+                must_go,
+            };
+            Some((hero, plan))
+        })?;
+        Some(Plans(plans))
     }
 
     /// An `i32`.

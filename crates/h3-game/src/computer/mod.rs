@@ -23,68 +23,18 @@
 //!
 //! [`GameCommand`]: crate::GameCommand
 
-// The army plan's values have no caller until the town and dwelling values' callers (T2h).
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "the army plan's values have no caller until the object value, E31 T2h"
-    )
-)]
 mod armies;
 mod artifacts;
-// The values that ask for a fight's worth (T2h, T2i) are the fight estimate's first callers
-// outside the tests; the turn's start calls the capture estimate beside it (T2d).
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "the fight estimate has no caller until the values, E31 T2h, T2i"
-    )
-)]
 mod fight;
 mod memory;
-// The object value has no caller until the planning's candidates (T2i) and the answers
-// (increment 4).
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "the object value has no caller until the planning, E31 T2i"
-    )
-)]
 mod objects;
 mod order;
-// The skills' values have no caller until the values that ask for them (T2g's town buildings,
-// T2h's object value: the University, the Witch Hut, the Seer's reward).
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "the skills' values have no caller until the values, E31 T2g, T2h"
-    )
-)]
+mod plan;
 mod skills;
 mod spells;
 mod start;
-// The town and dwelling values are the object value's (T2h), their only callers.
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "the town and dwelling values have no caller until the object value, E31 T2h"
-    )
-)]
 mod towns;
 mod turn;
-// The vision circle's only caller is the object value (T2h), whose caller is the planning (T2i).
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "the vision circle has no caller until the planning, E31 T2i"
-    )
-)]
 mod vision;
 
 #[cfg(test)]
