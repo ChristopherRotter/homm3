@@ -2,7 +2,7 @@
 
 Status: **in progress** since 2026-11-23 (T1a1a; refined 2026-11-21, AI-Q22); increment 1 closed
 2026-11-24 (AI-Q31), increments 2 to 7 cut; increment 2 refined 2026-11-25 (AI-Q32: ADR-0030
-accepted, eleven tasks), T2a to T2h done, T2i next; started after E25's increment 10 (AI-Q23) · Lane: **ai** · Follows E23 (the battle AI) and E26 (the
+accepted, eleven tasks; T2i0 inserted at T2i's start, AI-Q41), T2a to T2h and T2i0 done, T2i next; started after E25's increment 10 (AI-Q23) · Lane: **ai** · Follows E23 (the battle AI) and E26 (the
 fair system actor) for battle · Prerequisite of E13 (its target and ladder opponent) ·
 Consumers: the env (a computer seat), the server (a computer player in a hosted game), the shell
 (a game's computer players), the adventure lane (ADV-STUB-8, ADV-STUB-9)
@@ -165,6 +165,7 @@ are the original's, from `docs/exe/map.toml`'s sizes.
 | T2f | **The artifacts**: the effects' table (`ai_artifact_effects_build` 0x434100, the effects of §4.1), `ai_hero_artifact_value` 0x4336C0, the values to a hero and to a player; since T2d the start's artifacts' mean (+0x164, AI-STUB-14); `ai_hero_equipped_value` 0x433C60 moved to increment 3 (AI-Q37) | 37 (§4.1, §2.4) | 2 900 |
 | T2g | **The army and town values**: the army plans (`ai_army_plan_*`, `ai_stack_marginal_value` 0x42C830, the exchange and purchase values; AI-QUIRK-2), the dwelling's, the town's and its buildings', the weighted cost | 22 (§2.3, §2.4) | 3 400 |
 | T2h | **The object value** `ai_object_value` 0x528040 over the classes the engine has (§2.1's 36 value functions, the guarded object's fight), the rest `AI-STUB`s by epic; since T2d the vision circle `ai_vision_area_value` 0x432220 with its 75 class values (the start's Eye value, AI-STUB-10); since T2g (AI-Q38) the plan of one creature's offer `ai_army_plan_init_creature` 0x42CF50 with its callers (the Refugee Camp, the joining creatures), the callers of T2g's values (classes 17, 20, 98, the garrison and hero cases' exchange) and their `expect(dead_code)` lifted | 39 (§2.1) | 4 300 less the gaps |
+| T2i0 | **The computer's search** (inserted at T2i's start, AI-Q41: the planning's searches are the original's computer pathfinder, which the engine's one-day human reach does not give): `pathfinder_run` 0x56B440's modes 1 to 5 whole in `h3-adventure` (`h3_adventure::search`, `cross-lane`), beside the human reach: the score order and its open list, the relax, the steps over several days, the tiles and the fog by the variant (the faithful policy the computer's test, the fair one the human's), the guards by the caller's fight answer, the passage past an entrance, the teleporters, mode 4's jumps; AI-STUB-11 lifted (the threat fold on it) | 10 (§1.11) | 4 300 |
 | T2i | **The planning**: the danger map `ai_danger_map` 0x42DE50, the candidates `ai_hero_candidates` 0x42EDD0, the claims, the candidate's score, the destination `ai_hero_destination` 0x42E0B0 with its noise (76 to 100, the caller's stream), the class tables; since T2d the start's Grail target (+0x39, AI-STUB-15); since T2h the object value's and the vision circle's callers (`objects::value` with the hero's kept destination, `objects::Asking::destination`, which the Magic Well and Spring read) and the `expect(dead_code)` of `fight`, `skills`, `armies`, `towns`, `objects` and `vision` lifted | 11 (§1.9) | 2 900 |
 | T2j | **The walk**: `ai_hero_walk` 0x42FEE0 and its steps as `MoveHero` on the engine's pathfinder (the boat marks' overlay the adventure lane's API, stubbed until it lands; the spells and jumps stubbed until E08 increment 15), the boat's purchase; exit criteria (1), (3) to (5): the property tests over whole turns, the benchmark gated and the turn's cost recorded, the stubs listed | 8 (§1.10) | 2 200 |
 | T2k | **Trace T-A's harness and days 1 to 3** (`E31-design.md` §1: the map compiled by `h3-experiment`, the original under Wine through the capture harness with `h3mem.py`'s readers, `h3 ai trace`, the diff); exit criterion (2) | the harness | — |
@@ -231,3 +232,9 @@ Increment 2's (increment 1's: `E31-archive.md`).
   (`cross-lane`, AI-Q40); `expect(dead_code)` until T2i; `ai_join_without_room` 0x52BC60 to
   increment 3; AI-STUB-20 (the Hut of the Magi, the Obelisk, the Seer, E12, E09), AI-STUB-21 (a
   campaign's garrisons, E20); §5.5's #72 and #73 new. Record: `E31-log.md` T2h.
+- **T2i0** (2026-11-27, inserted and whole, AI-Q41): the original's computer pathfinder in
+  `h3-adventure` (`h3_adventure::search`, `cross-lane`; CPU-PTH-001 to -007: the frame and its open
+  list, the relax, the step over several days with the fog by the variant, the guards by the
+  caller's fight answer, the passage past an entrance, the teleporters, mode 4's jumps), the
+  threat fold on it (AI-STUB-11 lifted); AI-STUB-22 (Castle Gate, Town Portal, E09), AI-STUB-23
+  (the Sanctuary, the Quest Guard, E12); §5.5's #74 to #79 new. Record: `E31-log.md` T2i0.
