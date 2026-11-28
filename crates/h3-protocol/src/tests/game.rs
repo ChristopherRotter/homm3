@@ -757,8 +757,15 @@ fn decision_back(d: &Decision) -> DecisionView {
         Decision::University { visit, slots } => DecisionView::University {
             visit: h3_adventure::UniversityVisit {
                 hero: HeroId::new(visit.hero),
-                object_type: Handle::from_raw(visit.object_type),
-                anchor: pos_back(visit.anchor),
+                place: match visit.place {
+                    UniversitySeen::Object { object } => h3_adventure::UniversityPlace::Object {
+                        object_type: Handle::from_raw(object.object_type),
+                        anchor: pos_back(object.anchor),
+                    },
+                    UniversitySeen::Town { town } => {
+                        h3_adventure::UniversityPlace::Town(TownId::new(town))
+                    }
+                },
                 skills: visit.skills.iter().copied().map(Handle::from_raw).collect(),
                 price: amounts_back(&visit.price),
             },
@@ -1359,8 +1366,10 @@ fn every_decision() -> Vec<DecisionView> {
     out.push(DecisionView::University {
         visit: h3_adventure::UniversityVisit {
             hero,
-            object_type,
-            anchor,
+            place: h3_adventure::UniversityPlace::Object {
+                object_type,
+                anchor,
+            },
             skills: vec![
                 Handle::from_raw(1),
                 Handle::from_raw(2),
@@ -1374,6 +1383,16 @@ fn every_decision() -> Vec<DecisionView> {
             EngineSlot::Barred,
             EngineSlot::Open,
         ],
+    });
+    // E09 T59b1 (v88): a town's University.
+    out.push(DecisionView::University {
+        visit: h3_adventure::UniversityVisit {
+            hero,
+            place: h3_adventure::UniversityPlace::Town(TownId::new(3)),
+            skills: vec![Handle::from_raw(14)],
+            price: price(),
+        },
+        slots: vec![EngineSlot::Open],
     });
     out.push(DecisionView::Hire(HireView {
         target: h3_adventure::HireTarget::Hero(hero),
@@ -1798,7 +1817,7 @@ fn every_part_of_the_game_maps_back_and_round_trips() {
     in_tile_order(&mut o.adventure.objects);
     in_place_order(&mut o.garrisons);
     assert_eq!(inverse_game(&wire, None), o);
-    // E10 T3b1 (v88, GAM-TEM-003): a meeting's ally's hero, hero 9, with the details and the army
+    // E10 T3b1 (v89, GAM-TEM-003): a meeting's ally's hero, hero 9, with the details and the army
     // its visitor's owner sees.
     let mut o = every_game_part(None, MonthKind::Normal);
     let own = o.heroes[0].details.clone();

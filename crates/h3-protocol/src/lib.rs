@@ -285,13 +285,18 @@ pub mod wire;
 /// `TownCommand::BuildBoat` (a boat at the town's Shipyard on its spot), their refusals
 /// `TownReject::NoWarMachine`, `HasWarMachine` and `BoatSpotTaken`; no new event (the machine is
 /// `HeroChanged`, the boat `BoatBuilt`).
-/// v88 (E10 T3b1, the adventure lane's, `cross-lane`; E10's increment 1's design note §5): a
+/// v88 (E09 T59b1, the town lane's, `cross-lane`; the town epic's design note §112, §115): a
+/// town's Magic University, `TownCommand::University` (a town of the actor's, its visitor or
+/// garrison hero the student) and its refusals `TownReject::NoUniversity` and `NotTownHero`;
+/// `UniversityVisit` and `GameEvent::UniversityOpened` name their place (`UniversitySeen`: a map
+/// University by type and anchor, or a town) in place of the object's type and anchor.
+/// v89 (E10 T3b1, the adventure lane's, `cross-lane`; E10's increment 1's design note §5): a
 /// meeting with an ally's hero (GAM-TEM-003), `GameEvent::MeetingPartSeen` (the ally's hero's
 /// details and army, part by part, `MeetingPart`) and `HeroInfo::army` (that hero's, to the
 /// visitor's owner while the meeting is open; its details too), the refusal `GameReject::AllyHero`
 /// (no gift to the ally's hero); an ally's dwelling's read-only dialog's refusal
 /// `HireReject::ReadOnly` (ADV-DWL-004).
-pub const PROTOCOL_VERSION: u32 = 88;
+pub const PROTOCOL_VERSION: u32 = 89;
 
 /// The version of the record's format (`wire::RecordHeader`, the `Record` message): bumped when
 /// its layout changes, with its reader ([`record`], every client's: E24 M5 T2c) in the same

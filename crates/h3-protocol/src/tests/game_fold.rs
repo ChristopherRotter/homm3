@@ -802,8 +802,12 @@ fn the_fold_leaves_the_view_for_messages_and_what_no_event_carries() {
             GameEvent::UniversityOpened {
                 player: 1,
                 hero: 4,
-                object_type: ty,
-                anchor: a,
+                place: UniversitySeen::Object {
+                    object: ObjectRef {
+                        object_type: ty,
+                        anchor: a,
+                    },
+                },
             },
             GameEvent::MarketOpened {
                 player: 1,
@@ -1063,7 +1067,7 @@ fn the_fold_leaves_the_view_for_messages_and_what_no_event_carries() {
     assert_eq!(v, before);
 }
 
-/// A meeting with an ally's hero (E10 T3b1, GAM-TEM-003, v88) folds into the visitor's view as
+/// A meeting with an ally's hero (E10 T3b1, GAM-TEM-003, v89) folds into the visitor's view as
 /// `observe` shows it while it is open: the hero's parts make its details and army, a gift's
 /// slot and a change of its details follow, the meeting's close ends the view of them.
 #[test]

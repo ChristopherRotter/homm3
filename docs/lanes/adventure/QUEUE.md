@@ -11,7 +11,7 @@ Epic: `docs/epics/E10-game-orchestration.md` (refined 2026-11-21 with the user, 
 - **T3a done** (2026-11-27, `adventure/e10-t3a`; `E10-log.md`): the setup's team, `allied` by
   state, one explored layer a team, measured (`passage::Side`), §4 re-tested with allies.
 - **T3b1 done** (2026-11-28, `adventure/e10-t3b1`; decision 20; `E10-log.md`): the allies'
-  meeting with gifts only (GAM-TEM-003), an ally's dwelling read-only; protocol v88.
+  meeting with gifts only (GAM-TEM-003), an ally's dwelling read-only; protocol v89.
 - **T3b2:** the team's views (§6: GAM-TEM-004, `PlayerView::team`; a hero of the team at the
   popup's level 2, the exact army: `HeroInfo::army` holds it for the meeting's ally since T3b1,
   for every team hero then, each army change told to the team) and **the team's knowledge**
@@ -44,6 +44,19 @@ Epic: `docs/epics/E10-game-orchestration.md` (refined 2026-11-21 with the user, 
   lane: no work for you; a change to the passage rules may want the same change there (its tests
   pin each case), and Castle Gate and Town Portal (E09 increment 8) and the Sanctuary and Quest
   Guard (E12) have stubs there (AI-STUB-22, -23).
+- 2026-11-28 (the town lane, E09 T59b1, `town/e09-t59b1`, `cross-lane` with the user's
+  consent, E09 decision 228; **in your paths, for your review; game state hash v42 taken**): a
+  town's Magic University (TWN-UNI-001) opens your University decision (GAM-DEC-006 amended).
+  (1) `h3-adventure`'s **`UniversityVisit` names its place**: `place: UniversityPlace` (`Object {
+  object_type, anchor }` for the map's University, `Town(TownId)`) in place of `object_type` and
+  `anchor` (`command.rs`, `lib.rs`, `state/rewards.rs`' visit and its test); (2) `h3-game`'s
+  `GameEvent::UniversityOpened { player, hero, place }`, `GameState::open_university` now
+  `pub(crate)`, the decision's hash writes the place's tag (**game state hash v42**); (3) the replay
+  word `town university <town> <hero>` (`h3-files`): **replay format v30**; the 130 goldens
+  re-recorded from their commands (only the hash lines, `format` and `game_state_hash_version`
+  moved), `h3-server`'s record-test literals; (4) `h3-map`'s plans probe and play the University
+  (`check_town_university`; `visited` gives no object for a town's), `view.rs` folds the place.
+  The env's encoding is v25, the protocol v88.
 - 2026-11-27 (the town lane, E09 T59a, `town/e09-t59a`, `cross-lane` with the user's consent,
   E09 decision 227; **in your paths, for your review; no hash of yours changed**): a town's war
   machines (TWN-SMT-001) and its boat (TWN-SHY-001). (1) `state/boats.rs`: **`launch` is

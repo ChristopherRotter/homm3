@@ -206,12 +206,12 @@ hero's details and army shown to the visitor while the meeting is open.
   no hash moved), every purchase `HireError::ReadOnly` before the creature's test, the game's
   legal answers `Close` alone.
 - **The wire** (`h3-protocol`, the server lane's, `cross-lane` by decision 19's §16): protocol
-  v88: `MeetingPartSeen` with `MeetingPart`, `HeroInfo::army`, `GameReject::AllyHero`,
+  v89 (E09 T59b1 took v88, merged before this branch): `MeetingPartSeen` with `MeetingPart`, `HeroInfo::army`, `GameReject::AllyHero`,
   `HireReject::ReadOnly`; the fold's `see_met`, `set_stack` onto the ally's army,
   `close_decision` dropping it. **Not on the wire:** the read-only flag (the wire's `Hire`,
   `Decision::Meeting` and `GameObservation` are built by the clients' tests, so no field was added
   to them; a client reads it from the dwelling's owner; the server lane's inbox asked). The
-  clients' `h3-map-view` and `h3-view` build against v88.
+  clients' `h3-map-view` and `h3-view` build against v89.
 - **Tests:** the adventure's (`teams.rs`: the ally's bar's gifts and refusals, the split's range,
   the listing; `hiring.rs`: the read-only dialog of a level-5 and a level-1 dwelling; `towns.rs`,
   `teleporters.rs`: an ally's hero met off and on a town's entrance and on a gate's pair), the

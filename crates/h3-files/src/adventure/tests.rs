@@ -320,6 +320,15 @@ fn commands_round_trip_through_their_text() {
             }),
             "0 town boat 6",
         ),
+        // Format v30 (E09 T59b1): a town's University by its town and hero.
+        (
+            PlayerId::new(1),
+            GameCommand::Town(TownCommand::University {
+                town: TownId::new(6),
+                hero: HeroId::new(3),
+            }),
+            "1 town university 6 3",
+        ),
         // Format v26 (E08 T142a): a cast on the map, by its hero and spell, its target if any.
         (
             PlayerId::new(0),
@@ -587,6 +596,10 @@ fn commands_round_trip_through_their_text() {
         "0 town machine x 16",
         "0 town machine 2 x",
         "0 town machine 2 16 now",
+        "0 town university 2",
+        "0 town university x 1",
+        "0 town university 2 x",
+        "0 town university 2 1 now",
         "0 cast",
         "0 cast 1",
         "0 cast h1 6",

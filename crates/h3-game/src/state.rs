@@ -14,7 +14,7 @@ use h3_adventure::{
     AdventureOutcome, AdventureState, AltarVisit, ArmyRef, ArmySlot, Choice, ChoiceKind, Drowned,
     Exchange, Garrison, HeroGains, HillFortVisit, HireDialog, HireSource, HireTarget, MarketPlace,
     MarketVisit, Meeting, ObjectTypeId, Offer, OfferKind, Pick, Pos, ServiceVisit, TavernVisit,
-    TownReveal, UniversityVisit, Weekday,
+    TownReveal, UniversityPlace, UniversityVisit, Weekday,
 };
 use h3_content::{ResourceId, SkillId};
 use h3_contracts::{ArmyStack, HeroId, HeroSex, PlayerId, TownId};
@@ -891,12 +891,19 @@ impl GameState {
         });
     }
 
-    /// Opens the University a visit of `player`'s hero made (GAM-DEC-006, E08 T63a) as a pending
+    /// Opens the University a visit of `player`'s hero made (GAM-DEC-006, E08 T63a) or since E09
+    /// T59b1 a town's Magic University (TWN-UNI-001, `crate::town::university::open`) as a pending
     /// decision of the player, whatever its treasury holds (the original's dialog opens and
-    /// disables the purchase it cannot pay), told to it alone (`UniversityOpened`).
+    /// disables the purchase it cannot pay), told to it alone (`UniversityOpened`, with its
+    /// place).
     // rule: GAM-DEC-006
-    fn open_university<S: Sink>(&mut self, player: PlayerId, visit: UniversityVisit, sink: &mut S) {
-        let (hero, object_type, anchor) = (visit.hero, visit.object_type, visit.anchor);
+    pub(crate) fn open_university<S: Sink>(
+        &mut self,
+        player: PlayerId,
+        visit: UniversityVisit,
+        sink: &mut S,
+    ) {
+        let (hero, place) = (visit.hero, visit.place);
         self.push_decision(Decision::University {
             owner: player,
             visit,
@@ -904,8 +911,7 @@ impl GameState {
         sink.emit(GameEvent::UniversityOpened {
             player,
             hero,
-            object_type,
-            anchor,
+            place,
         });
     }
 
@@ -1894,7 +1900,8 @@ impl CanonicalHash for GameState {
     /// since v18 (E08 T63a) 5 a choice: its owner, hero, object type, anchor, 0 a chest
     /// (its gold's resource and amount, its experience) or 1 two primary skills (each, the amount,
     /// the price, whether it may be left), in v18 whether a guard's visit waits; 6 a University:
-    /// its owner, hero, object type, anchor, its skills (length, then each), its price, in v18
+    /// its owner, hero, object type, anchor (since v42, E09 T59b1, its place's tag first: 0 a map
+    /// object's type and anchor, 1 a town's id), its skills (length, then each), its price, in v18
     /// whether a guard's visit waits; since v25 (E08 T95b) 7 a hire dialog: its owner, its target
     /// (0 a hero and its id), its source (0 an object: its index, type and anchor); since v29 (E08
     /// T114a2) 8 a map garrison's exchange: its owner, its hero, the garrison's object index (a
@@ -2072,8 +2079,20 @@ impl CanonicalHash for GameState {
                     h.write_u8(6);
                     h.write_u8(owner.raw());
                     h.write_u16(visit.hero.raw());
-                    visit.object_type.hash_into(h);
-                    visit.anchor.hash_into(h);
+                    match visit.place {
+                        UniversityPlace::Object {
+                            object_type,
+                            anchor,
+                        } => {
+                            h.write_u8(0);
+                            object_type.hash_into(h);
+                            anchor.hash_into(h);
+                        }
+                        UniversityPlace::Town(town) => {
+                            h.write_u8(1);
+                            h.write_u16(town.raw());
+                        }
+                    }
                     h.write_len(visit.skills.len());
                     for skill in &visit.skills {
                         skill.hash_into(h);

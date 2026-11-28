@@ -159,6 +159,15 @@ pub enum TownCommand {
         /// The town.
         town: u16,
     },
+    /// Opens the Magic University of a town of the actor's for its visitor or garrison hero, the
+    /// actor's: E08's University decision with the town as its place (TWN-UNI-001; E09 T59b1,
+    /// v88).
+    University {
+        /// The town.
+        town: u16,
+        /// The student.
+        hero: u16,
+    },
 }
 
 /// A hero's move between a town's two bars (`h3_towns::TownHeroChange`; E09 T28a, v64).
@@ -699,7 +708,7 @@ pub enum GameReject {
         error: CastReject,
     },
     /// A management command in a meeting that is no gift to the meeting's ally's hero
-    /// (`h3_game::GameCommandError::AllyHero`, GAM-TEM-003; E10 T3b1, v88): a stack or an
+    /// (`h3_game::GameCommandError::AllyHero`, GAM-TEM-003; E10 T3b1, v89): a stack or an
     /// artifact taken from it, put onto an occupied slot or position of it, or one of its settings.
     AllyHero {
         /// The ally's hero.
@@ -846,6 +855,11 @@ pub enum TownReject {
     HasWarMachine {},
     /// An empty boat or a hero stands on the town's spot (TWN-SHY-001; v87).
     BoatSpotTaken {},
+    /// No Magic University stands in the town (TWN-UNI-001; E09 T59b1, v88).
+    NoUniversity {},
+    /// The hero is neither the town's visitor nor its garrison hero, or not the actor's
+    /// (TWN-UNI-001; v88).
+    NotTownHero {},
 }
 
 /// Why the adventure map refused a command (`h3_adventure::AdventureCommandError`); a step is
@@ -1055,7 +1069,7 @@ pub enum HireReject {
     },
     /// The army has no room for the creatures.
     NoRoom {},
-    /// The dialog is read-only, an ally's dwelling's (ADV-DWL-004; E10 T3b1, v88).
+    /// The dialog is read-only, an ally's dwelling's (ADV-DWL-004; E10 T3b1, v89).
     ReadOnly {},
 }
 

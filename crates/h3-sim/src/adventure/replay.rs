@@ -66,9 +66,10 @@ use super::rollout::choose;
 /// artifact sale (`h3_game::MarketAnswer::SellArtifact` by its place and resource, TWN-MKT-005);
 /// version 29 (E09 T59a): a war machine's purchase (`h3_towns::TownCommand::BuyWarMachine` by its
 /// town and building, TWN-SMT-001) and a boat built at a town's Shipyard
-/// (`h3_towns::TownCommand::BuildBoat` by its town, TWN-SHY-001). A replay of another version is
-/// refused ([`ReplayHeader::check`]).
-pub const REPLAY_FORMAT_VERSION: u32 = 29;
+/// (`h3_towns::TownCommand::BuildBoat` by its town, TWN-SHY-001); version 30 (E09 T59b1): a town's
+/// Magic University opened for its hero (`h3_towns::TownCommand::University` by its town and hero,
+/// TWN-UNI-001). A replay of another version is refused ([`ReplayHeader::check`]).
+pub const REPLAY_FORMAT_VERSION: u32 = 30;
 
 /// Identity of the rules and algorithms a replay depends on.
 #[derive(Debug, Clone, PartialEq, Eq)]

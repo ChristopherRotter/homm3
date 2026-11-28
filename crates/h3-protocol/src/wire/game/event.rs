@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{
     ArmySlot, ArmyStack, Artifact, ArtifactPlace, DaySpells, Formation, HireSeen, HireTarget,
-    MarketSeen, Month, Week,
+    MarketSeen, Month, UniversitySeen, Week,
 };
 use super::{
     GarrisonStack, GuildPart, HiredPart, MeetingPart, OfferLevels, Pos, PrimarySkill,
@@ -139,7 +139,7 @@ pub enum GameEvent {
         player: u8,
         heroes: [u16; 2],
     },
-    // E10 T3b1 (v88): the meeting's ally's hero as the visitor's owner sees it (GAM-TEM-003),
+    // E10 T3b1 (v89): the meeting's ally's hero as the visitor's owner sees it (GAM-TEM-003),
     // after its `MeetingOpened`, one part each in `MeetingPart`'s order.
     MeetingPartSeen {
         player: u8,
@@ -171,11 +171,11 @@ pub enum GameEvent {
         object_type: u16,
         anchor: Pos,
     },
+    /// The place a town's too since E09 T59b1 (v88).
     UniversityOpened {
         player: u8,
         hero: u16,
-        object_type: u16,
-        anchor: Pos,
+        place: UniversitySeen,
     },
     HireOpened {
         player: u8,

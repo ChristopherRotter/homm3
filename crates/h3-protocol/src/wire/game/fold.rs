@@ -209,7 +209,7 @@ impl GameObservation {
             GameEvent::MeetingOpened { player: _, heroes } => {
                 self.decision = Some(Decision::Meeting { heroes });
             }
-            // E10 T3b1 (v88, GAM-TEM-003): the meeting's ally's hero, part by part, until the
+            // E10 T3b1 (v89, GAM-TEM-003): the meeting's ally's hero, part by part, until the
             // meeting closes (`close_decision`).
             GameEvent::MeetingPartSeen {
                 player: _,

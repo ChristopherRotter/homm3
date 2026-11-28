@@ -2152,8 +2152,8 @@ mod tests {
 
     use h3_map_view::timeline::Direction;
     use h3_protocol::wire::game::{
-        Amount, Choice, HireAnswer, LevelUp, Offer, OfferKind, PrimarySkill, UniversityAnswer,
-        UniversityVisit,
+        Amount, Choice, HireAnswer, LevelUp, ObjectRef, Offer, OfferKind, PrimarySkill,
+        UniversityAnswer, UniversitySeen, UniversityVisit,
     };
     use h3_ui::keys::Chord;
 
@@ -2204,8 +2204,12 @@ mod tests {
         let university = Decision::University {
             visit: UniversityVisit {
                 hero: 0,
-                object_type: 1,
-                anchor,
+                place: UniversitySeen::Object {
+                    object: ObjectRef {
+                        object_type: 1,
+                        anchor,
+                    },
+                },
                 skills: Vec::new(),
                 price: vec![gold],
             },

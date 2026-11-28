@@ -1202,7 +1202,7 @@ enum Open {
     Dialog(HeroId, Vec<ArmyStack>),
     // E08 T63a: a choice and a University, named by the hero and the object.
     Choice(HeroId, h3_adventure::ObjectTypeId, TilePos),
-    University(HeroId, h3_adventure::ObjectTypeId, TilePos),
+    University(HeroId, h3_game::UniversityPlace),
     // E08 T95b: a hire dialog, named by its army and its source.
     Hire(h3_game::HireTarget, h3_game::HireSeen),
     // E08 T114a2: a map garrison's exchange, its hero, the garrison and its army.
@@ -1304,9 +1304,7 @@ fn check_told(
         DecisionView::Meeting { heroes } => Open::Meeting(*heroes),
         DecisionView::ArmyDialog { hero, group, .. } => Open::Dialog(*hero, group.clone()),
         DecisionView::Choice(c) => Open::Choice(c.hero, c.object_type, c.anchor),
-        DecisionView::University { visit: v, .. } => {
-            Open::University(v.hero, v.object_type, v.anchor)
-        }
+        DecisionView::University { visit: v, .. } => Open::University(v.hero, v.place),
         DecisionView::Hire(view) => Open::Hire(view.target, view.source),
         DecisionView::Exchange {
             hero,
@@ -2067,12 +2065,11 @@ fn check_told(
             GameEvent::UniversityOpened {
                 player,
                 hero,
-                object_type,
-                anchor,
+                place,
             } => {
                 prop_assert_eq!(player, viewer);
                 prop_assert!(decision.is_none());
-                decision = Some(Open::University(hero, object_type, anchor));
+                decision = Some(Open::University(hero, place));
             }
             GameEvent::HireOpened {
                 player,

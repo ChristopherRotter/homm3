@@ -741,7 +741,7 @@ fn event_back(e: &w::GameEvent, viewer: PlayerId, battle: Option<h3_battle::Even
             player: p(player),
             heroes: heroes.map(HeroId::new),
         },
-        // E10 T3b1 (v88).
+        // E10 T3b1 (v89).
         G::MeetingPartSeen { player, hero, part } => GameEvent::MeetingPartSeen {
             player: p(player),
             hero: id(hero),
@@ -875,13 +875,19 @@ fn event_back(e: &w::GameEvent, viewer: PlayerId, battle: Option<h3_battle::Even
         G::UniversityOpened {
             player,
             hero,
-            object_type,
-            anchor,
+            place,
         } => GameEvent::UniversityOpened {
             player: p(player),
             hero: id(hero),
-            object_type: ty(object_type),
-            anchor: pos_back(anchor),
+            place: match place {
+                w::UniversitySeen::Object { object } => h3_game::UniversityPlace::Object {
+                    object_type: ty(object.object_type),
+                    anchor: pos_back(object.anchor),
+                },
+                w::UniversitySeen::Town { town } => {
+                    h3_game::UniversityPlace::Town(TownId::new(town))
+                }
+            },
         },
         G::HireOpened {
             player,
@@ -1310,7 +1316,7 @@ pub(super) fn every_event() -> Vec<GameEvent> {
             player: P0,
             heroes: [hero, HeroId::new(5)],
         },
-        // E10 T3b1 (v88, GAM-TEM-003): the meeting's ally's hero, each part kind once.
+        // E10 T3b1 (v89, GAM-TEM-003): the meeting's ally's hero, each part kind once.
         GameEvent::MeetingPartSeen {
             player: P0,
             hero: HeroId::new(5),
@@ -1417,8 +1423,16 @@ pub(super) fn every_event() -> Vec<GameEvent> {
         GameEvent::UniversityOpened {
             player: P0,
             hero,
-            object_type: ty,
-            anchor: at,
+            place: h3_game::UniversityPlace::Object {
+                object_type: ty,
+                anchor: at,
+            },
+        },
+        // E09 T59b1 (v88).
+        GameEvent::UniversityOpened {
+            player: P0,
+            hero,
+            place: h3_game::UniversityPlace::Town(TownId::new(2)),
         },
         GameEvent::HireOpened {
             player: P0,

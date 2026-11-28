@@ -500,19 +500,34 @@ pub enum Pick {
 
 /// A University a visit opens (ADV-TCH-007, E08 T62a): its skills in the draw's order, each sold
 /// at the price for the hero to learn at Basic while its slot is open
-/// (`h3_heroes::university_slot`).
+/// (`h3_heroes::university_slot`); since E09 T59b1 also a town's Magic University (TWN-UNI-001,
+/// GAM-DEC-006 amended), opened by the game with its place.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UniversityVisit {
-    /// The hero whose visit opened it.
+    /// The hero whose visit opened it: the student.
     pub hero: HeroId,
-    /// The object's type.
-    pub object_type: ObjectTypeId,
-    /// The object's anchor.
-    pub anchor: Pos,
+    /// Where it opened (E09 T59b1).
+    pub place: UniversityPlace,
     /// The skills.
     pub skills: Vec<SkillId>,
     /// The price of each, by resource.
     pub price: Vec<(ResourceId, u32)>,
+}
+
+/// Where a University opened (GAM-DEC-006 amended; E09 T59b1, the town epic's design note §112,
+/// decision 210): a University on the map, or a town's Magic University (by `TownId`: this crate
+/// imports no town type), whose dialog is the map's (survey `E09-trades.md` §6.3).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum UniversityPlace {
+    /// A University on the map.
+    Object {
+        /// The object's type.
+        object_type: ObjectTypeId,
+        /// The object's anchor.
+        anchor: Pos,
+    },
+    /// A town (E09 T59b1).
+    Town(TownId),
 }
 
 /// The window a service's visit opens (E08 T133a2; increment 14's design note §10;

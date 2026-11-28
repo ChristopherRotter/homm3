@@ -202,7 +202,11 @@
 //! its Ballista Yard; every other faction's Blacksmith first), and [`TOWN_BOAT`], a boat built at
 //! its Shipyard (`TownCommand::BuildBoat`, TWN-SHY-001); each by its town's entrance in the tile
 //! head, the building head 0; one action per listed command (a third building selling a machine
-//! has none).
+//! has none). Version 25 (E09 T59b1, the town lane's, `cross-lane` with the user's consent, E09
+//! decision 228; the town epic's design note §115) appends the University's two: [`TOWN_UNIVERSITY`]
+//! and its next, a town's Magic University opened (`TownCommand::University`, TWN-UNI-001) for its
+//! visitor or for its garrison hero, by the town's entrance in the tile head, the building head 0;
+//! one action per listed opening (the University's purchases are E08's [`UNIVERSITY_SLOTS`]).
 
 use h3_adventure::{
     ALTAR_SLOTS, AdventureCommand, AdventureSpell, AltarPlaces, MarketParams, Pos, Reach,
@@ -221,7 +225,7 @@ use h3_towns::{BuildingId, MAX_BUILDINGS, TownCommand, TownHeroChange};
 use crate::action as battle;
 
 /// Version of this encoding; bump on any change of the layout above.
-pub const ACTION_ENCODING_VERSION: u32 = 24;
+pub const ACTION_ENCODING_VERSION: u32 = 25;
 
 /// Hero slots per player: the most heroes the original allows a player on the map.
 pub const HERO_SLOTS: usize = 8;
@@ -392,8 +396,16 @@ pub const WAR_MACHINE: usize = MARKET_SELL_ARTIFACT + SALE_WORN + SALE_BACKPACK;
 /// head, on its spot (E09 T59a; TWN-SHY-001).
 pub const TOWN_BOAT: usize = WAR_MACHINE + WAR_MACHINES;
 
+/// The students a town's University entries name (E09 T59b1): its visitor, then its garrison hero.
+pub const TOWN_STUDENTS: usize = 2;
+
+/// The entry that opens the Magic University of the town whose entrance is the tile in the tile
+/// head for its visitor (E09 T59b1; TWN-UNI-001); the next for its garrison hero
+/// ([`Action::town_university`]).
+pub const TOWN_UNIVERSITY: usize = TOWN_BOAT + 1;
+
 /// Number of entries.
-pub const ENTRY_COUNT: usize = TOWN_BOAT + 1;
+pub const ENTRY_COUNT: usize = TOWN_UNIVERSITY + TOWN_STUDENTS;
 
 /// The building head's size (E09 T19c1): the most buildings of a town's record
 /// (`h3_towns::MAX_BUILDINGS`), each named by its index there.
@@ -585,6 +597,12 @@ impl Action {
         Self::map(TOWN_BOAT, tile)
     }
 
+    /// Opens the Magic University of the town whose entrance is the tile at `tile` for its
+    /// visitor (`k` 0) or its garrison hero (`k` 1) (E09 T59b1): [`TOWN_UNIVERSITY`] plus `k`.
+    pub const fn town_university(tile: u32, k: usize) -> Self {
+        Self::map(TOWN_UNIVERSITY + k, tile)
+    }
+
     /// The hero in `slot` casts the adventure spell of behaviour `spell` at `tile` (E08 T144a2): its
     /// [`CAST_BASE`] entry; `tile` the target of Scuttle Boat or Dimension Door, 0 for the others.
     pub fn cast(slot: usize, spell: AdventureSpell, tile: u32) -> Self {
@@ -754,7 +772,8 @@ fn bound_spell(rules: &GameRuleset, spell: AdventureSpell) -> Option<SpellId> {
 /// a hero move of its kind, E09 T28a, a [`TAVERN_HIRE`] entry a hire of its slot, E09 T38a2,
 /// [`TOWN_OPEN`] a town's opening, E09 T49a2, [`SPELL_BOOK`] a spell book's purchase, E09 T49b,
 /// [`TOWN_MARKET`] a town's market window, E09 T58a2, a [`WAR_MACHINE`] entry a war machine's
-/// purchase of its building, [`TOWN_BOAT`] a boat, E09 T59a, a hero's cast entry of Summon Boat, Fly or Water Walk its cast, E08 T144a2; or with an open
+/// purchase of its building, [`TOWN_BOAT`] a boat, E09 T59a, a [`TOWN_UNIVERSITY`] entry a
+/// University's opening for its student, E09 T59b1, a hero's cast entry of Summon Boat, Fly or Water Walk its cast, E08 T144a2; or with an open
 /// decision its answers alone: `Decline`, and `Accept` while the offer stands,
 /// E08 T15a; a level-up's `First` and `Second`, E08 T30; a hire dialog's purchases by their
 /// creatures' places, E08 T95b), each hero slot with a tile to move to ([`legal_moves`]: none
@@ -794,7 +813,9 @@ pub fn legal_mask(
 /// openings after [`TOWN_OPEN`] (E09 T49a2), and of the listed spell books' purchases after
 /// [`SPELL_BOOK`] (E09 T49b), and of the listed market windows after [`TOWN_MARKET`] (E09 T58a2),
 /// and of the listed purchases of a [`WAR_MACHINE`] entry's building and of the listed boats after
-/// [`TOWN_BOAT`] (E09 T59a), the targets of its hero's query after a cast entry of Scuttle Boat
+/// [`TOWN_BOAT`] (E09 T59a), and of the listed Universities' openings for a [`TOWN_UNIVERSITY`]
+/// entry's student after it (E09 T59b1), the targets of its hero's query after a cast entry of
+/// Scuttle Boat
 /// or Dimension Door ([`cast_targets`], E08 T144a2; 0 alone after a legal cast entry of another
 /// spell); none after an illegal entry or in the battle phase (none for the neutral seat).
 pub fn tile_mask(
@@ -866,6 +887,15 @@ pub fn tile_mask(
         for command in legal_commands(state, rules, seat.actor()) {
             if let GameCommand::Town(TownCommand::BuyWarMachine { town, building }) = command
                 && machine_entry(state, rules, town, building) == Some(entry)
+                && let Some(index) = town_tile(state, town)
+            {
+                mask[index as usize] = true;
+            }
+        }
+    } else if student_slot(entry).is_some() {
+        for command in legal_commands(state, rules, seat.actor()) {
+            if let GameCommand::Town(TownCommand::University { town, hero }) = command
+                && student_entry(state, town, hero) == Some(entry)
                 && let Some(index) = town_tile(state, town)
             {
                 mask[index as usize] = true;
@@ -974,6 +1004,32 @@ fn machine_entry(
         .position(|id| id == building)
         .filter(|&k| k < WAR_MACHINES)
         .map(|k| WAR_MACHINE + k)
+}
+
+/// The place of a [`TOWN_UNIVERSITY`] entry among a town's students (E09 T59b1): 0 the visitor, 1
+/// the garrison hero; none for another entry.
+fn student_slot(entry: usize) -> Option<usize> {
+    entry
+        .checked_sub(TOWN_UNIVERSITY)
+        .filter(|&k| k < TOWN_STUDENTS)
+}
+
+/// `town`'s students (E09 T59b1): its visitor and its garrison hero, any player's.
+fn students(state: &GameState, town: TownId) -> [Option<HeroId>; TOWN_STUDENTS] {
+    let adventure = state.adventure();
+    [
+        adventure.town_visitor(town),
+        adventure.town_hero(town).map(|hero| hero.id),
+    ]
+}
+
+/// The [`TOWN_UNIVERSITY`] entry of `town`'s University opened for `hero` (E09 T59b1): its place
+/// among the town's [`students`], none for a hero that is neither.
+fn student_entry(state: &GameState, town: TownId, hero: HeroId) -> Option<usize> {
+    students(state, town)
+        .iter()
+        .position(|&student| student == Some(hero))
+        .map(|k| TOWN_UNIVERSITY + k)
 }
 
 /// The town and building of `command` when it is the town command of `entry`: [`BUILD`]'s build
@@ -1403,7 +1459,8 @@ fn tileless_entry(command: &GameCommand, hire: &[CreatureTypeId]) -> Option<usiz
 /// T38a2), [`TOWN_OPEN`] for an opening (E09 T49a2), [`SPELL_BOOK`] for a spell book's
 /// purchase (E09 T49b), [`TOWN_MARKET`] for a market window (E09 T58a2), a [`WAR_MACHINE`] entry
 /// for a war machine's purchase by its building's place ([`machine_entry`]) and [`TOWN_BOAT`] for
-/// a boat (E09 T59a), or a cast's by its hero's slot and its spell's behaviour (E08 T144a2,
+/// a boat (E09 T59a), a [`TOWN_UNIVERSITY`] entry for a University's opening by its student's
+/// place ([`student_entry`], E09 T59b1), or a cast's by its hero's slot and its spell's behaviour (E08 T144a2,
 /// [`cast_command_entry`]; `legal_commands` lists those without a target).
 fn command_entry(
     state: &GameState,
@@ -1433,6 +1490,9 @@ fn command_entry(
             machine_entry(state, rules, *town, *building)
         }
         GameCommand::Town(TownCommand::BuildBoat { .. }) => Some(TOWN_BOAT),
+        GameCommand::Town(TownCommand::University { town, hero }) => {
+            student_entry(state, *town, *hero)
+        }
         other => tileless_entry(other, hire),
     }
 }
@@ -1537,7 +1597,9 @@ fn build_boat(
 /// T49a2 its opening with [`TOWN_OPEN`] (building 0), or since E09 T49b its spell book's purchase
 /// with [`SPELL_BOOK`] (building 0), or since E09 T58a2 its market window with [`TOWN_MARKET`]
 /// (building 0), or since E09 T59a its war machine's purchase at its record's building of a
-/// [`WAR_MACHINE`] entry's place and its boat with [`TOWN_BOAT`] (building 0), or since E08 T144a2
+/// [`WAR_MACHINE`] entry's place and its boat with [`TOWN_BOAT`] (building 0), or since E09 T59b1
+/// its University's opening for its visitor or garrison hero of a [`TOWN_UNIVERSITY`] entry's
+/// place (building 0), or since E08 T144a2
 /// a cast of its entry's hero and
 /// behaviour's bound spell (building 0): Scuttle Boat and Dimension Door at the tile, whichever
 /// it is (their target is `apply`'s to check, as the cast's other conditions), the others with
@@ -1591,6 +1653,12 @@ pub fn decode(
             town,
             building,
         }));
+    }
+    if let Some(k) = student_slot(action.entry) {
+        let town = town_of_tile(state, action.tile)?;
+        let hero = students(state, town)[k]?;
+        return (action.building == 0)
+            .then_some(GameCommand::Town(TownCommand::University { town, hero }));
     }
     if action.entry == BUILD || action.entry == RECRUIT {
         let town = town_of_tile(state, action.tile)?;
@@ -1657,7 +1725,9 @@ pub fn decode(
 /// [`TOWN_OPEN`] and the town's entrance (E09 T49a2), a spell book's purchase by [`SPELL_BOOK`]
 /// and the town's entrance (E09 T49b), a market window by [`TOWN_MARKET`] and the town's entrance
 /// (E09 T58a2), a war machine's purchase by its building's [`WAR_MACHINE`] entry and a boat by
-/// [`TOWN_BOAT`], each with the town's entrance (E09 T59a), a cast by its hero's slot and its
+/// [`TOWN_BOAT`], each with the town's entrance (E09 T59a), a University's opening by its
+/// student's [`TOWN_UNIVERSITY`] entry and the town's entrance (E09 T59b1), a cast by its hero's
+/// slot and its
 /// spell's behaviour, with
 /// its target for Scuttle Boat and Dimension Door and tile 0 for the others (E08 T144a2: none for
 /// a target with another spell, or none with these two; none of these for the neutral seat), a
@@ -1714,6 +1784,10 @@ pub fn encode(
         }
         GameCommand::Town(TownCommand::BuildBoat { town }) => {
             return town_tile(state, *town).map(Action::town_boat);
+        }
+        GameCommand::Town(TownCommand::University { town, hero }) => {
+            let entry = student_entry(state, *town, *hero)?;
+            return town_tile(state, *town).map(|tile| Action::map(entry, tile));
         }
         GameCommand::Cast {
             hero,

@@ -203,7 +203,7 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 
 ### TWN-QUIRK-16 — The Magic University teaches a school the scenario bans
 - Class: fix-optional (the user, 2026-11-24, TWN-Q35, T-23 with TD-30, as T-18; the epic's decision 204)
-- Context / rules affected: town, the Conflux's Magic University (TWN-UNI-001, with E09 T59b), GAM-SET-002 (the scenario's banned skills, read with this flag off)
+- Context / rules affected: town, the Conflux's Magic University (TWN-UNI-001, E09 T59b1), GAM-SET-002 (the scenario's banned skills, read with this flag off)
 - Original behavior: the Conflux's University offers Fire, Air, Water and Earth Magic (14 to 17, constants written into the dialog's buffer, 0x5D2F0A to 0x5D2F1F) and teaches them whatever the map bans: neither `university_slot_state` 0x5F0790, `university_slot_click` 0x5F0AC0, `university_learn` 0x5F0F60 nor `hero_learn_secondary_skill` 0x4E22D0 reads the map's banned skills. The map's University object draws its four among the unbanned skills.
 - Intended/expected behavior: with the flag off the scenario's banned skills leave the four when the University opens (a banned school is neither offered nor taught).
 - Impact: gameplay, small: a map's intent broken, no state corrupted; reachable on the shipped maps that ban a school and have a Conflux, or a random town that resolves to one (the census: `Heroes of Might not Magic` and its allied copy ban all four schools).
@@ -211,7 +211,7 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 - Sources: code reading (E09 T52; survey `docs/rules/surveys/E09-trades.md` §6.3, T-23); batch TWN-6's row TWN-6-7 (`experiments/results/E09-batch-6d.md`, `-6d-run2.md`: on a map banning Fire Magic the University offered Fire as learnable and its purchase taught Fire Magic at Basic for 2 000 gold; survey §14).
 - Flag: `quirk.town.university_ignores_map_bans` (`UNIVERSITY_IGNORES_MAP_BANS`, registry position 55, E09 T55b)
 - Defaults: faithful = on (the scenario's bans not tested), strict-fixed = off (the banned schools left out)
-- Regression test: `crates/h3-pack/src/tests.rs`, `the_harvested_flags_of_e09_increment_6` (the profiles, E09 T55b); the rule's with E09 T59b
+- Regression test: `crates/h3-pack/src/tests.rs`, `the_harvested_flags_of_e09_increment_6` (the profiles, E09 T55b); the rule's `crates/h3-game/src/town/tests/university.rs`, `a_banned_school_is_offered_only_with_the_flag_on` (E09 T59b1)
 - Decided by / date: the user, 2026-11-24 (TWN-Q35; decision 204); confirmed by batch TWN-6 (E09 T54, TWN-6-7); the flag added and the entry made by E09 T55b, 2026-11-25
 
 ### TWN-QUIRK-17 — The Artifact Merchants free at a count of 0

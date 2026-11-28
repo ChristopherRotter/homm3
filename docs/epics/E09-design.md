@@ -3993,6 +3993,19 @@ Decision 210 (the original's town University runs the map's dialog functions, §
   class weight of 0: closed), the price against the hero's owner's treasury (the actor), learned
   at Basic (`HeroChange::RaiseSkill`); several a visit; `Leave`. No mark (the map's University's
   team mark is the map's).
+- *As built* (T59b1, decision 228): `h3_towns::check_university(town, part)` →
+  `UniversitySale { skills, price }` (`NoUniversity`), read from the derived `ServiceRoles`' new
+  `university` set and also answered by `service_offers`; `TownCommand::University { town, hero }`,
+  the refusals `NoUniversity` and `NotTownHero` (a hero neither the visitor nor the garrison hero,
+  or not the actor's). The game (`town/university.rs`): `UnknownTown`, `NotOwner`, the part's
+  check, then the student among the town's two heroes (`guild::heroes`), then
+  `GameState::open_university` (now `pub(crate)`) with `UniversityVisit { hero, place, skills,
+  price }`: the adventure's `UniversityVisit` holds `place: UniversityPlace` (`Object { object_type,
+  anchor }` or `Town(TownId)`) in place of the object's type and anchor, and `UniversityOpened`
+  carries it; the decision's hash writes the place's tag (**game state hash v42**). `taught` leaves
+  out the scenario's banned skills with `TWN-QUIRK-16`'s flag off. The listing (`town/services.rs`):
+  the openings after the boat, the visitor's first, each where a skill taught has a slot open
+  for the hero and the treasury holds the price (`university::sells`).
 
 ### 113. The Skeleton Transformer (TWN-TRF-001; `TownCommand::Transform { town, army, slot }`)
 
@@ -4057,7 +4070,13 @@ Decision 210 (the original's town University runs the map's dialog functions, §
   none) and the boat's `TOWN_BOAT` (170), each by its town's entrance, building 0; `ENTRY_COUNT`
   171, encoding **v24**; the protocol **v87** (`TownCommand::BuyWarMachine`, `BuildBoat`,
   `TownReject::NoWarMachine`, `HasWarMachine`, `BoatSpotTaken`); the words `town machine <town>
-  <building>` and `town boat <town>` (format **v29**).
+  <building>` and `town boat <town>` (format **v29**). *As built* (T59b1, decision 228): the
+  University's 2 from `TOWN_UNIVERSITY` (171: the town's visitor, then its garrison hero, any
+  player's, by the town's entrance, building 0; `TOWN_STUDENTS` 2); `ENTRY_COUNT` 173, encoding
+  **v25**; the protocol **v88** (`TownCommand::University`, `TownReject::NoUniversity`,
+  `NotTownHero`, `UniversitySeen` in `UniversityVisit` and `GameEvent::UniversityOpened`); the
+  word `town university <town> <hero>` (format **v30**); the 130 goldens re-recorded from their
+  commands (only the hash lines, `format` and `game_state_hash_version` moved).
 - **The protocol** (the server lane's paths, `cross-lane`): the decisions' places (`MarketWindow`'s
   object or town, its hero optional; the University's), `SellArtifact` with its refusals, the five
   commands with their refusals, the events' places; the next version per task at merge.
