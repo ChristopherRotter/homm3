@@ -74,3 +74,15 @@ m1-2p-t1 1 temporary set=6 mask=0BB same=1 m84=1 m94=1
 s1-3p-2sm2i2 1 temporary set=6 mask=0BB same=1 m84=1 m94=1
 s1-2p-2sm0k 1 temporary set=6 mask=0BB same=1 m84=1 m94=1
 s1-1p-c1-2sm0k 1 temporary set=6 mask=0BB same=1 m84=1 m94=1
+m1-2p-ready 1 temporary set=6 mask=0BB same=1 m84=1 m94=1
+m1-2p-ready 2 water set=9 mask=1FF same=1 m84=1 m94=1
+m1-2p-ready 3 water set=9 mask=1FF same=1 m84=1 m94=1
+m1-2p-ready 4 water set=9 mask=1FF same=1 m84=1 m94=1
+m1-2p-ready 5 water set=9 mask=1FF same=1 m84=1 m94=1
+m1-2p-ready 6 water set=9 mask=1FF same=1 m84=1 m94=1
+m1-2p-ready 7 water set=9 mask=1FF same=1 m84=1 m94=1
+m1-2p-ready 8 water set=9 mask=1FF same=1 m84=0 m94=0
+m1-2p-ready 9 water set=9 mask=1FF same=1 m84=1 m94=1
+m1-2p-ready 10 water set=9 mask=1FF same=1 m84=1 m94=1
+m1-2p-ready 11 water set=9 mask=1FF same=1 m84=1 m94=1
+m1-2p-ready 12 water set=9 mask=1FF same=1 m84=1 m94=1

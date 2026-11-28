@@ -10,7 +10,9 @@ use crate::objects::Shape;
 use crate::painter::Pictures;
 use crate::painter::tests::tables;
 use crate::part::GeneratorTables;
-use crate::plan::tests::{Log, bits, connection, drawn, generator, no_objects, pend, zone};
+use crate::plan::tests::{
+    Log, bits, connection, drawn, generator, no_guards, no_objects, pend, zone,
+};
 
 /// Grass and snow.
 const GRASS: u32 = 2;
@@ -82,9 +84,14 @@ fn seal_of(cells: &mut Cells, tables: &GeneratorTables) -> (Result<(), PaintFaul
         zones: &zones,
         connections: &[connection(1, 2, false)],
         gens: &gens,
-        objects: &no_objects(),
+        objects: &mut no_objects(),
+        road_targets: &mut Vec::new(),
         pictures: &pictures,
         cosmetic: true,
+        guards: no_guards(),
+        shipyard_sites_repeated: true,
+        underground_wide_walled: true,
+        monolith_channels_shared: true,
     };
     let mut log = Log::default();
     let sealed = seal(&mut Stream::new(6, &mut log), &input, cells);

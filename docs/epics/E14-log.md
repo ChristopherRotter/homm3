@@ -776,3 +776,57 @@ The record of E14's tasks: what each read, built and decided, beyond the one lin
   terrain, a test holding the table to it; a kept plain picture before the weight is read) took
   `h3-pack-rmg`'s tests from 354 s to 102 s in a debug build; the next ways in the lane's inbox.
 
+
+## T4d1 — step 6's connections but the Border Guards (2026-11-28, increment 4)
+
+- **The cut** (the user, decision 15): T4d in two at the Border Guards, which no corpus template
+  reaches (only Gauntlet, Ready or Not and Worlds at War of SoD's 53 have a flagged connection);
+  the flags of RMG-QUIRK-7 to -10, -19 and -26 at T4d2 in one re-hash (decision 16, RMG-STUB-2),
+  the guard tables' harvest with them (RMG-STUB-3). Three worker sub-agents in turn on
+  `rmg/e14-t4d1` (a lane branch: no flag, no hash moved). Staged from the PC: the oracle's set,
+  67 files (58 sums checked); #1217 had merged.
+- **The oracle:** `corpus --phases`, 24 of 24 as `phases.txt`. Step 6's connections draw in every
+  case: land passages and guard monsters in all 24, shipyard prototypes in 20 (a land way refused
+  tries a shipyard first, dry maps too), monoliths in 17, gates in 8; no Border Guard.
+- **A Border Guard case** (the user: record it now): seeds found with `h3rmg.drawn_template`
+  (the port's template choice, equal to the original's), then seven oracle maps (Ready or Not on
+  M one level with 2 and 3 players, M two levels and L, Worlds at War on M two levels): none
+  places a Border Guard or a Keymaster's Tent. `rmg_border_guard_place` 0x540D60 finds the tent's
+  and guard's prototypes of the colour (+0xD8 and +0xC8: the generator's class lists, 0x38 + 16 ×
+  class), then the tent's `rmg_object_place_in_zone` finds no position (no draw at 0x542A8F): the
+  guard is not placed and the connection goes on unguarded (value 0 in these templates). Kept as
+  the corpus's 25th case, `m1-2p-ready` (Ready or Not, M, seed 2120000037; its connections 4-5,
+  6-5, 7-5 flagged, all made by land): `corpus --only --phases --record` and `plan --record`
+  added its lines; its steps 1 to 5 and step 6's plan equalled the port at once. A seed past
+  2³¹ − 1 makes the game's `time()` −1 (the log's `seed 4294967295`): TRAPS.
+- **Part 1** (worker 1, `plan/connect.rs`, `guards.rs`; RMG-CON-013, -014, -018, -020, -021):
+  the frame's two passes; by land (rock not tested on a crossing's cell back; the end marked on
+  the other side is the first list entry naming this zone; a dead least-cost-1 branch makes a
+  connection without a passage); the guard value (the four tables as code constants with their
+  addresses, RMG-STUB-3, ADR-0029 point 5's harvest left to T4d2); `rmg_guard_monster_create`
+  reusable for steps 8 and 10 (AI × ((low + high) / 2), halving first; unused creature ids of
+  level −1). The packs' creature order is not the original's ids (`base` puts the war machines
+  after 117, `ab`'s after them): a key table from `h3-map`'s import codes maps them, checked
+  against the original packs; RMG-QUIRK-10's walk from 144 behind a boolean (RMG-STUB-2).
+- **Part 2** (worker 2; RMG-CON-015, -016): the shipyard (prototype first; the site test: the
+  block not water, no entrance, passable, not rock, the water side kept free, the cell beyond x+1
+  or x−3; its guard on the anchor's row below, in the entrance's column; the row below into the
+  zone's +0x404; the boat reach from the first water side), RMG-QUIRK-19 behind a boolean; the
+  gates; `PlanInput` gained the road targets; the synthetic pack an invented shipyard and gate
+  (`NoShipyard`, `NoGate`: the prototype draw's modulus 0).
+- **Part 3** (worker 3; RMG-CON-017): the monoliths (`rmg_object_place_in_zone`, the channel
+  index, the lists +0x14C0 and +0x14D0 in `Connected`; the guard below the anchor, a monolith's
+  Border Guard after it is placed), RMG-QUIRK-26 and -9 behind booleans, each off half built and
+  tested (-26: a one-way connection at channel j takes j + 1 for the other zone's entrance and
+  this zone's exit, the index moves by 2; the cycle's last channel keeps one); step 6 ended
+  (`step_end(6)`); the synthetic pack invented monoliths. **6LM10's self-connection:** no fault;
+  the zone's list holds it twice, pass 2 makes each entry by monoliths with both ends in zone 13
+  (`l1-4p-a`: 8 one-way monoliths back into their own zone, channels 2 and 3 used up): the
+  ledger's open table, for the checkpoint.
+- **Result:** step 6's draws and dump equal `phases.txt` on 25 of 25
+  (`the_corpus_draws_and_dumps_as_the_phase_oracle_to_step_6`, steps 5 and 6 in one pass; the
+  plan's prefix checks kept); the property test runs steps 0 to 6. Left for T4d2 (RMG-STUB-1):
+  `border_guard`, `monolith_border_guard` (with the joining run again and its 0x546154 draws), the
+  carve's pending guard; the Keymaster colours +0xF5C and +0x1100 to thread.
+- **Gates:** `h3-rmg` 100 % lines and regions; `h3-pack-rmg`'s tests 127 s in a debug build (one
+  pass over the corpus 25 s, `xl2-8p-t4-islands` 55 % of it), 577 s under the local coverage.

@@ -25,7 +25,7 @@ const MASK48: u64 = (1 << 48) - 1;
 pub const NO_ENTRANCE: [i32; 2] = [8, 6];
 
 /// The monsters' class (54), whose prototypes are sorted by subtype.
-const MONSTERS: usize = 54;
+pub(crate) const MONSTERS: usize = 54;
 
 /// `rmg_neighbours` 0x69CDC0 (`rmg_neighbours_init` 0x530DA0): E, SE, S, SW, W, NW, N, NE, y
 /// down; the odd ones diagonal.
@@ -62,12 +62,30 @@ pub enum ObjectFault {
     /// reads its list's first from nowhere (RMG-QUIRK-4); the test refuses.
     NoObject,
     /// A prototype taken by its index in a class group's vector past its end (steps 4 and 5's
-    /// town of a type without its line: `rmg_town_place_central`'s +0x658 vector, RMG-QUIRK-4):
-    /// nothing placed.
+    /// town of a type without its line: `rmg_town_place_central`'s +0x658 vector; step 6's
+    /// one-way monolith exit with fewer exits than entrances: `rmg_connection_by_monoliths`'
+    /// +0x2F8; RMG-QUIRK-4): nothing placed.
     Prototype,
     /// A town's owner read from the colours by a zone's position (Ownership less 1) outside -1 to
     /// 7: the original reads the generator's next fields (RMG-QUIRK-4); the town is neutral.
     Colour,
+    /// A guard monster's creature (`rmg_guard_monster_create` 0x540B20) the original does not
+    /// survive: a monster prototype of a subclass past 144 (it writes past its array), the walk
+    /// past the creatures with a prototype (a counted creature without one: it reads the word
+    /// below its array; RMG-QUIRK-4), or a creature of AI value 0 (its count divides by zero,
+    /// RMG-QUIRK-3): no monster.
+    Creature,
+    /// Step 6's monoliths without any two-way or one-way monolith prototype: the original reads
+    /// class 43's empty vector (`rmg_connection_by_monoliths` 0x542D62, RMG-QUIRK-4), then takes
+    /// the index `mod 0` (`rmg_zone_connections_make` 0x543957, RMG-QUIRK-3); nothing placed, the
+    /// index kept.
+    NoMonolith,
+    /// Step 6's shipyard prototype drawn `mod 0` (`rmg_connection_by_shipyard` 0x541B85): no
+    /// prototype of class 87 (RMG-QUIRK-3); no shipyard, the connection not made that way.
+    NoShipyard,
+    /// Step 6's gate prototype drawn `mod 0` (`rmg_connection_by_gate` 0x5421C3): no prototype
+    /// of class 103 (RMG-QUIRK-3); no gates, the connection not made that way.
+    NoGate,
 }
 
 /// An object template as the generator's copy (`rmg_object_template`, 0x4C bytes) holds what the
@@ -313,13 +331,13 @@ impl Objects {
         self.fault = self.fault.or(Some(fault));
     }
 
-    /// The generator's +0xF44, the serial the next town or prison takes (1 from the
-    /// constructor).
+    /// The generator's +0xF44, the serial the next town, prison or guard monster takes (1 from
+    /// the constructor).
     pub fn serial(&self) -> i32 {
         self.serial
     }
 
-    /// The serial taken by a town or prison created (+0xF44, raised by 1).
+    /// The serial taken by a town, prison or guard monster created (+0xF44, raised by 1).
     pub(crate) fn take_serial(&mut self) -> i32 {
         let serial = self.serial;
         self.serial = serial.wrapping_add(1);
@@ -683,4 +701,4 @@ pub(crate) fn outline_clear(
 }
 
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;

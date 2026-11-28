@@ -857,7 +857,7 @@ numeric  = "integer"
 
   [[rule.source]]
   kind       = "observation"
-  ref        = "The phase oracle (E14 T4b): the 24 corpus cases' draws in steps 4 and 5 and their dumps 4 and 5 (the cells and the towns' objects) equal the port's (h3-pack-rmg's the_corpus_draws_and_dumps_as_the_phase_oracle_to_step_5)"
+  ref        = "The phase oracle (E14 T4b): the 24 corpus cases' draws in steps 4 and 5 and their dumps 4 and 5 (the cells and the towns' objects) equal the port's (h3-pack-rmg's the_corpus_draws_and_dumps_as_the_phase_oracle_to_step_6)"
   confidence = "high"
 
 [[rule]]
@@ -876,7 +876,7 @@ numeric  = "integer"
 
   [[rule.source]]
   kind       = "observation"
-  ref        = "The phase oracle (E14 T4b): the 24 corpus cases' draws in steps 4 and 5 and their dumps 4 and 5 (the cells and the towns' objects) equal the port's (h3-pack-rmg's the_corpus_draws_and_dumps_as_the_phase_oracle_to_step_5)"
+  ref        = "The phase oracle (E14 T4b): the 24 corpus cases' draws in steps 4 and 5 and their dumps 4 and 5 (the cells and the towns' objects) equal the port's (h3-pack-rmg's the_corpus_draws_and_dumps_as_the_phase_oracle_to_step_6)"
   confidence = "high"
 
 [[rule]]
@@ -895,7 +895,7 @@ numeric  = "integer"
 
   [[rule.source]]
   kind       = "observation"
-  ref        = "The phase oracle (E14 T4b): the 24 corpus cases' draws in steps 4 and 5 and their dumps 4 and 5 (the cells and the towns' objects) equal the port's (h3-pack-rmg's the_corpus_draws_and_dumps_as_the_phase_oracle_to_step_5)"
+  ref        = "The phase oracle (E14 T4b): the 24 corpus cases' draws in steps 4 and 5 and their dumps 4 and 5 (the cells and the towns' objects) equal the port's (h3-pack-rmg's the_corpus_draws_and_dumps_as_the_phase_oracle_to_step_6)"
   confidence = "high"
 
 [[rule]]
@@ -914,7 +914,7 @@ numeric  = "float"
 
   [[rule.source]]
   kind       = "observation"
-  ref        = "The phase oracle (E14 T4b): the 24 corpus cases' draws in steps 4 and 5 and their dumps 4 and 5 (the cells and the towns' objects) equal the port's (h3-pack-rmg's the_corpus_draws_and_dumps_as_the_phase_oracle_to_step_5)"
+  ref        = "The phase oracle (E14 T4b): the 24 corpus cases' draws in steps 4 and 5 and their dumps 4 and 5 (the cells and the towns' objects) equal the port's (h3-pack-rmg's the_corpus_draws_and_dumps_as_the_phase_oracle_to_step_6)"
   confidence = "high"
 
 [[rule]]
@@ -933,7 +933,7 @@ numeric  = "integer"
 
   [[rule.source]]
   kind       = "observation"
-  ref        = "The phase oracle (E14 T4b): the 24 corpus cases' draws in steps 4 and 5 and their dumps 4 and 5 (the cells and the towns' objects) equal the port's (h3-pack-rmg's the_corpus_draws_and_dumps_as_the_phase_oracle_to_step_5)"
+  ref        = "The phase oracle (E14 T4b): the 24 corpus cases' draws in steps 4 and 5 and their dumps 4 and 5 (the cells and the towns' objects) equal the port's (h3-pack-rmg's the_corpus_draws_and_dumps_as_the_phase_oracle_to_step_6)"
   confidence = "high"
 
 [[rule]]
@@ -941,7 +941,7 @@ id       = "RMG-CON-001"
 title    = "Step 6: the obstacle plan's order"
 context  = "rmg"
 status   = "implemented"
-summary  = "rmg_paths_and_connections runs, in this order: the lanes (RMG-CON-002 to -004), the zone walls (RMG-CON-005), the land cells of no zone made obstacles (RMG-CON-006), per zone generator in order the islets (RMG-CON-007, -008), the zones' free cells joined (RMG-CON-009 to -011), the water shores sealed (RMG-CON-012), the connections (RMG-CON-013 on). Bit 26 of a cell's +0x28 marks it for obstacles (step 13), bit 27 keeps it free; a cell with +0x2C bit 0 (a pending Border Guard) keeps both through every mark. The port runs all but the connections (E14 T4c; T4d). An islet's painter fault ends the plan after the joining, a seal's at its end; RMG-QUIRK-5's refusal ends it at the joining."
+summary  = "rmg_paths_and_connections runs, in this order: the lanes (RMG-CON-002 to -004), the zone walls (RMG-CON-005), the land cells of no zone made obstacles (RMG-CON-006), per zone generator in order the islets (RMG-CON-007, -008), the zones' free cells joined (RMG-CON-009 to -011), the water shores sealed (RMG-CON-012), the connections (RMG-CON-013 on). Bit 26 of a cell's +0x28 marks it for obstacles (step 13), bit 27 keeps it free; a cell with +0x2C bit 0 (a pending Border Guard) keeps both through every mark. The port runs the plan (E14 T4c) and the connections by land, by a shipyard, by gates and by monoliths (T4d1; the Border Guards T4d2's), which end step 6. An islet's painter fault ends the plan after the joining, a seal's at its end; RMG-QUIRK-5's refusal ends it at the joining; the connections' first object fault ends it at their end."
 quirks   = []
 numeric  = "integer"
 
@@ -952,7 +952,7 @@ numeric  = "integer"
 
   [[rule.source]]
   kind       = "observation"
-  ref        = "The phase oracle (E14 T4c, clients/capture/rmg/plan.txt): on the 24 corpus cases the port's draws after step 5 are the original's plan, its lanes first, with plan.txt's count and digest (the walls, the cells of no zone and the joining draw nothing; h3-pack-rmg's the_corpus_draws_step_6s_plan_as_the_original)"
+  ref        = "The phase oracle (E14 T4c, clients/capture/rmg/plan.txt): on the 24 corpus cases the port's draws after step 5 are the original's plan, its lanes first, with plan.txt's count and digest (the walls, the cells of no zone and the joining draw nothing); since E14 T4d1 all of step 6, its draws and its dump, equals phases.txt's on the 25 (h3-pack-rmg's the_corpus_draws_and_dumps_as_the_phase_oracle_to_step_6)"
   confidence = "high"
 
 [[rule]]
@@ -971,7 +971,7 @@ numeric  = "integer"
 
   [[rule.source]]
   kind       = "observation"
-  ref        = "The phase oracle (E14 T4c, clients/capture/rmg/plan.txt): the 24 corpus cases' lanes' draws (0x543EB8 and 0x54403E, their count and digest) equal the port's first draws after step 5 (h3-pack-rmg's the_corpus_draws_step_6s_plan_as_the_original)"
+  ref        = "The phase oracle (E14 T4c, clients/capture/rmg/plan.txt): the 24 corpus cases' lanes' draws (0x543EB8 and 0x54403E, their count and digest) equal the port's first draws after step 5 (h3-pack-rmg's the_corpus_draws_and_dumps_as_the_phase_oracle_to_step_6)"
   confidence = "high"
 
 [[rule]]
@@ -990,7 +990,7 @@ numeric  = "float"
 
   [[rule.source]]
   kind       = "observation"
-  ref        = "The phase oracle (E14 T4c, clients/capture/rmg/plan.txt): the 24 corpus cases' lanes' draws (0x543EB8 and 0x54403E, their count and digest) equal the port's first draws after step 5 (h3-pack-rmg's the_corpus_draws_step_6s_plan_as_the_original)"
+  ref        = "The phase oracle (E14 T4c, clients/capture/rmg/plan.txt): the 24 corpus cases' lanes' draws (0x543EB8 and 0x54403E, their count and digest) equal the port's first draws after step 5 (h3-pack-rmg's the_corpus_draws_and_dumps_as_the_phase_oracle_to_step_6)"
   confidence = "high"
 
 [[rule]]
@@ -1009,7 +1009,7 @@ numeric  = "integer"
 
   [[rule.source]]
   kind       = "observation"
-  ref        = "The phase oracle (E14 T4c, clients/capture/rmg/plan.txt): the 24 corpus cases' lanes' draws (0x543EB8 and 0x54403E, their count and digest) equal the port's first draws after step 5, the branches' segments drawing among them (h3-pack-rmg's the_corpus_draws_step_6s_plan_as_the_original)"
+  ref        = "The phase oracle (E14 T4c, clients/capture/rmg/plan.txt): the 24 corpus cases' lanes' draws (0x543EB8 and 0x54403E, their count and digest) equal the port's first draws after step 5, the branches' segments drawing among them (h3-pack-rmg's the_corpus_draws_and_dumps_as_the_phase_oracle_to_step_6)"
   confidence = "high"
 
 [[rule]]
@@ -1028,7 +1028,7 @@ numeric  = "integer"
 
   [[rule.source]]
   kind       = "observation"
-  ref        = "The phase oracle (E14 T4c, clients/capture/rmg/plan.txt): in the 11 corpus cases whose plan draws nothing after the lanes the port draws no more, the walls among them (h3-pack-rmg's the_corpus_draws_step_6s_plan_as_the_original); the walls' cells are checked with step 6's dump after E14 T4d"
+  ref        = "The phase oracle (E14 T4c, clients/capture/rmg/plan.txt): in the 11 corpus cases whose plan draws nothing after the lanes the port draws no more, the walls among them (h3-pack-rmg's the_corpus_draws_and_dumps_as_the_phase_oracle_to_step_6); the walls' cells are checked with step 6's dump after E14 T4d"
   confidence = "medium"
 
 [[rule]]
@@ -1047,7 +1047,7 @@ numeric  = "integer"
 
   [[rule.source]]
   kind       = "observation"
-  ref        = "The phase oracle (E14 T4c, clients/capture/rmg/plan.txt): in the 11 corpus cases whose plan draws nothing after the lanes the port draws no more (h3-pack-rmg's the_corpus_draws_step_6s_plan_as_the_original); the cells are checked with step 6's dump after E14 T4d"
+  ref        = "The phase oracle (E14 T4c, clients/capture/rmg/plan.txt): in the 11 corpus cases whose plan draws nothing after the lanes the port draws no more (h3-pack-rmg's the_corpus_draws_and_dumps_as_the_phase_oracle_to_step_6); the cells are checked with step 6's dump after E14 T4d"
   confidence = "medium"
 
 [[rule]]
@@ -1104,7 +1104,7 @@ numeric  = "integer"
 
   [[rule.source]]
   kind       = "observation"
-  ref        = "The phase oracle (E14 T4c, clients/out/rmg/<case>/run1/clock/rmg1-6.cells): on the 24 corpus cases the port's floods after the plan (+0x10 to +0x18, +0x1C, +0x20 bits 24-31, +0x28 bits 12-14) equal step 6's dump on every cell, l1-4p-c's ninth zone generator (a water zone without a cell) seeding nothing; the joining draws nothing (h3-pack-rmg's the_corpus_draws_step_6s_plan_as_the_original)"
+  ref        = "The phase oracle (E14 T4c, clients/out/rmg/<case>/run1/clock/rmg1-6.cells): on the 24 corpus cases the port's floods after the plan (+0x10 to +0x18, +0x1C, +0x20 bits 24-31, +0x28 bits 12-14) equal step 6's dump on every cell, l1-4p-c's ninth zone generator (a water zone without a cell) seeding nothing; the joining draws nothing (h3-pack-rmg's the_corpus_draws_and_dumps_as_the_phase_oracle_to_step_6)"
   confidence = "high"
 
 [[rule]]
@@ -1131,7 +1131,7 @@ id       = "RMG-CON-011"
 title    = "The carve"
 context  = "rmg"
 status   = "implemented"
-summary  = "rmg_path_carve from a cell with its flag clear (the joining's): when its cost (+0x1C bits 0-15) is 1 to 29999, back along the cells it was entered from (+0x10 to +0x18, unchecked) while their cost is above 0: each cell kept free (bit 27 set, 26 cleared), and the cells of the start's zone in its 3 x 3 clamped to the map without +0x2C bit 0 lose bit 26; the cell of cost 0 reached is left. The walk ends: every cost on it is below the one before. A cell on the walk with +0x2C bit 0 gets its pending Border Guard (rmg_prototype_draw 0x546154 of type 9 and the colour in +0x2C bits 1-4, placed by the generator's slot 1, +0x2C bits 0-4 cleared): not ported yet (RMG-STUB-1, E14 T4d), none being pending before step 6's connections. With the flag set (rmg_connection_by_land's) the 3 x 3 is not cleared (T4d)."
+summary  = "rmg_path_carve from a cell with its flag clear (the joining's): when its cost (+0x1C bits 0-15) is 1 to 29999, back along the cells it was entered from (+0x10 to +0x18, unchecked) while their cost is above 0: each cell kept free (bit 27 set, 26 cleared), and the cells of the start's zone in its 3 x 3 clamped to the map without +0x2C bit 0 lose bit 26; the cell of cost 0 reached is left. The walk ends: every cost on it is below the one before. A cell on the walk with +0x2C bit 0 gets its pending Border Guard (rmg_prototype_draw 0x546154 of type 9 and the colour in +0x2C bits 1-4, placed by the generator's slot 1, +0x2C bits 0-4 cleared): not ported yet (RMG-STUB-1, E14 T4d2), none being pending before step 6's Border Guards. With the flag set (rmg_connection_by_land's: the connection's Border Guard flag, +9) the 3 x 3 is not cleared (E14 T4d1)."
 quirks   = []
 numeric  = "integer"
 
@@ -1161,5 +1161,157 @@ numeric  = "integer"
 
   [[rule.source]]
   kind       = "observation"
-  ref        = "The phase oracle (E14 T4c, clients/capture/rmg/plan.txt and rmg1-6.cells): the 11 corpus cases that seal draw as the original's to the plan's end (s1-2p-c1-islands 1395 draws after the lanes; m2-3p-c2-islands, l1-4p-b, l2-2p-c4-islands, xl2-4p-seed0 and xl2-8p-t4-islands heavily; h3-pack-rmg's the_corpus_draws_step_6s_plan_as_the_original); the terrain and pictures after the plan equal step 6's dump on every cell of the 24"
+  ref        = "The phase oracle (E14 T4c, clients/capture/rmg/plan.txt and rmg1-6.cells): the 11 corpus cases that seal draw as the original's to the plan's end (s1-2p-c1-islands 1395 draws after the lanes; m2-3p-c2-islands, l1-4p-b, l2-2p-c4-islands, xl2-4p-seed0 and xl2-8p-t4-islands heavily; h3-pack-rmg's the_corpus_draws_and_dumps_as_the_phase_oracle_to_step_6); the terrain and pictures after the plan equal step 6's dump on every cell of the 24"
+  confidence = "high"
+
+[[rule]]
+id       = "RMG-CON-013"
+title    = "The connections' frame"
+context  = "rmg"
+status   = "implemented"
+summary  = "rmg_zone_connections_make first lists the crossing cells, level by level, row by row: a cell a cost flood entered from another zone (+0x20 bits 24-31 not negative), neither water nor rock, passable (bit 25), whose cell back (the cell plus rmg_neighbours[+0x28 bits 12-14]) is not water and of another zone byte. Each template zone's list (+0xC4: per connection touching it in order, its far zone; a connection of a zone to itself twice) has a made flag per entry (+0xA; step 2's connections of two water zones made). Pass 1, per zone generator k in order whose terrain is not water: +0x28 bit 24 (the boat reach) cleared on its level; per entry of its zone's list not made (the far zone generator taken by the far zone's id, unchecked: the port skips an id past them; the other end the first entry of the far zone's list naming a zone of id k, not the same connection's when two join the same zones): by land (RMG-CON-014; both ends made), else by a shipyard (this end), else, the far zone generator's terrain not water, by gates (both ends). Pass 2, per such zone generator with an entry not made: bit 24 cleared on its level, then per placed shipyard (class 87) whose anchor's zone byte is k the first of rmg_side_steps' cells ((-3, 0), (1, 0), (-3, 1), (1, 1)) whose column is on the map (its row unchecked: on the map, every shipyard being RMG-CON-015's, whose site test keeps the row below its anchor on it) and which is water starts rmg_boat_reach_flood (bit 24 over the four orthogonal steps: a kept-free or land neighbour marked, kept-free water entered); per entry not made from the first: by a shipyard, else, the far terrain not water, by monoliths (RMG-CON-017) with an index i from 0, both ends made whatever was placed, i becoming (i + 1) mod (the two-way and one-way entrance prototypes' count; mod 0 a fault, RMG-QUIRK-3; i + 2 for a connection RMG-QUIRK-26's fix gives two channels). A zone's connection to itself (6LM10's zone 13) is in its list twice and the other end found is the first, the same entry: pass 2 makes it twice, by monoliths both ends in the zone. The Border Guards (T4d2) are RMG-STUB-1: they place nothing yet. Progress +6400 (not modelled)."
+quirks   = ["RMG-QUIRK-3", "RMG-QUIRK-4"]
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T1a2c, T4d1): rmg_zone_connections_make 0x543240 (0x543286 to 0x5433AE the crossings, 0x5433D6 to 0x5435B7 pass 1, 0x5435BC to 0x543987 pass 2, the index 0x543925 to 0x543963), rmg_boat_reach_flood 0x541780, rmg_side_steps_init 0x541910; survey E14-generator.md §2.3 (\"The connections\"), §3.2.7"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "The phase oracle (E14 T4d1, clients/out/rmg/<case>/run1/clock/rmg1.draws and rmg1-6.cells): on the 25 corpus cases all of step 6's draws and its dump (bit 24 among them) equal the oracle's and phases.txt's (h3-pack-rmg's the_corpus_draws_and_dumps_as_the_phase_oracle_to_step_6); l1-4p-a's self-connection of zone 13 is made twice by monoliths, as the original's"
+  confidence = "high"
+
+[[rule]]
+id       = "RMG-CON-014"
+title    = "A connection by land"
+context  = "rmg"
+status   = "implemented"
+summary  = "rmg_connection_by_land for zone generators k and f: refused unless on one level (+0x18) and neither of water terrain. The crossings P of k's zone (its zone byte k's zone's id) that f's zone's flood entered (+0x20 bits 24-31 its id), P and its cell back Q holding no object, are counted (n); the candidates are those of least entering cost (+0x1C bits 16-31; above 100 left out; a cost below the least so far empties them), in order; none: refused. The guard value g is RMG-CON-018's. A least cost of 1 with g = 0 and no Border Guard (+9) is made without a passage (never reached: an entering cost is at least 10). Else min(candidates, (n + 39) / 40) passages, each: P rand() % the candidates left (0x54146B, unsigned), Q its cell back, paths carved from P and from Q (RMG-CON-011 with the Border Guard flag), P into k's +0x404 and Q into f's (x, y), P removed (the order kept); with the flag a Border Guard at P (its tent in f's zone), then at Q (in k's) (rmg_border_guard_place 0x540D60 and rmg_border_guard_ring_mark 0x540FC0; each placed makes g = 0 for this passage and the later ones: E14 T4d2, none placed yet, as on the corpus); then RMG-CON-020's guard monster when g > 0. Made (both ends)."
+quirks   = []
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T1a2c, T4d1): rmg_connection_by_land 0x541140 (0x541209 to 0x54133A the candidates, 0x5413EA the least cost of 1, 0x541412 the passages' count, 0x54146B to 0x5415C6 a passage), rmg_path_carve 0x5408E0; survey E14-generator.md §2.3 (\"The connections\"), §3.2.7"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "The phase oracle (E14 T4d1): the corpus's land passages draw as the original's (0x54146B per passage, every case; m1-4p's 11 passages, each guarded) and leave step 6's dump of the 4 cases made by land alone"
+  confidence = "high"
+
+[[rule]]
+id       = "RMG-CON-015"
+title    = "A connection by a shipyard"
+context  = "rmg"
+status   = "implemented"
+quirks   = ["RMG-QUIRK-3", "RMG-QUIRK-4", "RMG-QUIRK-19"]
+numeric  = "integer"
+summary  = "rmg_connection_by_shipyard for zone generators k and f: refused unless on one level. A shipyard prototype rand() % class 87's (0x541B78, unsigned) before any test (none: a division by zero, RMG-QUIRK-3). Over k's box row by row, the cells of k's zone that f's zone's flood entered (+0x20 bits 24-31 its id): one reached by boat (+0x28 bit 24) makes it at once; a water one, or one on the map's last row, is passed; for a land one the anchors x..x+2 of its row that rmg_map_can_place allows in k's zone and rmg_shipyard_site_fits 0x541960 accepts (the row below on the map; the 3 x 2 cells x-2..x, y..y+1 not water, without an entrance, free, not rock; the first of rmg_side_steps' cells on the map that is water and kept free; on row y the cell beyond, x+1 for a side on the left, x-3 on the right, on the map and not water), each entering the list once per such cell (RMG-QUIRK-19, flag quirk.rmg.shipyard_sites_repeated; off: once). None: refused. The shipyard created (rmg_object_init 0x5330E0, its use count raised), its site rand() % the list (0x541D6C, unsigned), placed through the generator's slot 1; its entrance a road target (+0x14B0, after the towns'); the row below its footprint (x - width + 1..x, y + 1) kept free (bit 27 set, 26 cleared) unless a Border Guard is pending there, each cell into k's +0x404; rmg_boat_reach_flood from the first of rmg_side_steps' cells on the map that is water. Its guard, on the row below the anchor (the entrance's below for an entrance on the anchor's row, as every shipped shipyard's): with the Border Guard flag three guards from the entrance's column less 1 (rmg_border_guard_place, count 3), the tent in f's zone (E14 T4d2; none placed yet), else, none placed, RMG-CON-020's monster in the entrance's column when g > 0. Made at this end only."
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T1a2c, T4d1): rmg_connection_by_shipyard 0x541AD0 (0x541B60 to 0x541B8D the prototype, 0x541BC4 to 0x541CD8 the sites, 0x541D25 to 0x541DA8 the placing, 0x541DAB to 0x541E6E the road target and the row below, 0x541E70 to 0x541F1F the boat reach, 0x541F24 to 0x54205C the guard), rmg_shipyard_site_fits 0x541960, rmg_boat_reach_flood 0x541780, rmg_side_steps_init 0x541910, rmg_map_can_place 0x531CF0; survey E14-generator.md §2.3 (\"The connections\"), §3.2.7"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "The phase oracle (E14 T4d1): the corpus's shipyard draws (0x541B78 per call, 0x541D6C per shipyard placed; 19 cases call it, 7 place one) equal the original's up to each case's first 0x542A8F (20 cases draw 0x541B78 in step 6, 8 place a shipyard), and l1-4p-b's 7 shipyards leave step 6's dump (rmg1-6.cells, phases.txt)"
+  confidence = "high"
+
+[[rule]]
+id       = "RMG-CON-016"
+title    = "A connection by gates"
+context  = "rmg"
+status   = "implemented"
+quirks   = ["RMG-QUIRK-3", "RMG-QUIRK-4"]
+numeric  = "integer"
+summary  = "rmg_connection_by_gate for zone generators k and f: refused on one level, for k on water, or when their boxes' overlap (the greater least x and y, the lesser greatest) is empty. A gate prototype rand() % class 103's (0x5421BC, unsigned) before any position is sought (none: a division by zero, RMG-QUIRK-3). Over the overlap row by row, the (x, y) of k's zone on k's level and of f's zone on f's, whose sum of the two cells' object distances (+0x20 bits 0-15) is at least the greatest kept (from 0) and where rmg_map_can_place allows the prototype on k's level in k's zone and on f's in f's; a greater sum empties the list. None: refused. One rand() % the list (0x542387, unsigned); a gate created and placed there on k's level, then one on f's (each its use count raised); the entrance (x, y) into k's +0x404 and f's; the cell below the entrance kept free on each level unless a Border Guard is pending there (written unchecked: off the map, a line without an entrance, a fault in the port, RMG-QUIRK-4). Its guards: with the Border Guard flag one below the entrance on k's level, the tent in f's zone, then on f's, the tent in k's (E14 T4d2; none placed yet), else RMG-CON-020's monsters when g > 0. Made at both ends."
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T1a2c, T4d1): rmg_connection_by_gate 0x542080 (0x5420EC to 0x54219D the refusals and the overlap, 0x5421A3 to 0x5421CE the prototype, 0x5421E7 to 0x542343 the positions, 0x542387 to 0x542508 the gates and the passages, 0x542585 to 0x542600 the cells below, 0x542603 to 0x542906 the guards), rmg_map_can_place 0x531CF0; survey E14-generator.md §2.3 (\"The connections\"), §3.2.7"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "The phase oracle (E14 T4d1): the corpus's gate draws (0x5421BC per call, 0x542387 per pair placed; the 8 two-level cases, xl2-8p-t4-islands with 4 calls finding no position) equal the original's up to each case's first 0x542A8F"
+  confidence = "high"
+
+[[rule]]
+id       = "RMG-CON-017"
+title    = "A connection by monoliths"
+context  = "rmg"
+status   = "implemented"
+quirks   = ["RMG-QUIRK-3", "RMG-QUIRK-4", "RMG-QUIRK-26"]
+numeric  = "integer"
+summary  = "rmg_connection_by_monoliths for the land zone generators k and f (pass 2's last way, RMG-CON-013) with the monolith index i: i below n45 (class 45's prototypes) takes two-way prototype i for both ends; else one-way channel j = i - n45, entrance prototype j (class 43) and exit prototype j (class 44, its vector read unchecked: fewer exits than entrances a fault, RMG-QUIRK-4; without any monolith prototype class 43's empty vector is read, a fault). The guard value g is RMG-CON-018's (inline at 0x542D80). An entrance placed in k's zone by rmg_object_place_in_zone 0x542930 (the anchors of the zone generator's box from its least x + width - 1 and least y + height - 1, row by row, on its level, of its zone and allowed by rmg_map_can_place; none: nothing and no draw; else rand() % them, 0x542A8F, unsigned; the object created, its use count raised, and placed through the generator's slot 1), listed in +0x14C0 (one-way) or +0x14D0 (two-way), its anchor's (x, y) into k's +0x404; then with the Border Guard flag rmg_monolith_border_guard 0x542B00 (the zones' paths joined again, the tent in f's zone; once placed g = 0: E14 T4d2, none placed yet), else, g above 0, RMG-CON-020's monster below its anchor; the same for an entrance in f's zone (the tent in k's); for one-way an exit in k's zone, then one in f's, unguarded, both in +0x14C0 and their zones' +0x404. A monolith that finds no position is skipped. No pairing is written: each is its template's class and subclass, the game's channel (ADV-TEL-002, -003): a one-way connection is one channel whose entrances lead to either exit, their own zone's among them, and after n45 + n43 monolith connections the channels are used again (RMG-QUIRK-26, flag quirk.rmg.monolith_channels_shared; off: a one-way connection whose channel is not the last takes the next, j + 1, for f's entrance and k's exit, each entrance leading to the other zone's exit alone, and the index moves by 2; at the last channel it keeps one)."
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T1a2c, T4a, T4d1): rmg_connection_by_monoliths 0x542CE0 (0x542D0B the terrains, 0x542D1D to 0x542D71 the prototypes, 0x542D74 to 0x542DDF the guard value, 0x542DE2 to 0x542F52 this zone's entrance and its guard, 0x542F5B to 0x5430D4 the other's, 0x5430DD to 0x543226 the exits), rmg_object_place_in_zone 0x542930, rmg_object_delete 0x533120 (a failed placing's use count lowered again), rmg_map_can_place 0x531CF0, rmg_zone_connections_make 0x543925 to 0x543963 (the index); survey E14-generator.md §2.3 (\"The connections\", \"The pairing as read (T4a)\"), §3.2.7"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "The phase oracle (E14 T4d1, clients/out/rmg/<case>/run1/clock/rmg1.draws and rmg1-6.cells): the corpus's monolith draws (0x542A8F per monolith placed; 20 of the 25 cases, 2 to 40 a case; two-way monoliths in all 20, one-way in l1-4p-a, xl1-6p-c2 and xl2-8p-t4-islands) equal the original's, and all of step 6's draws and its dump, the monoliths' objects among them, equal phases.txt's on the 25 (h3-pack-rmg's the_corpus_draws_and_dumps_as_the_phase_oracle_to_step_6)"
+  confidence = "high"
+
+[[rule]]
+id       = "RMG-CON-018"
+title    = "A connection's guard value"
+context  = "rmg"
+status   = "implemented"
+summary  = "A wide connection (+8) is not guarded (g = 0). Else, from the connection's value v (+4) and the generator's monster strength s (+0x10BC, 1 to 5: RMG-SET-005): g = (v - rmg_guard_threshold_low[s]) x rmg_guard_factor_low[s] / 4 when v is above that threshold, plus (v - rmg_guard_threshold_high[s]) x rmg_guard_factor_high[s] / 4 when above that one (32-bit products, the quarters truncating toward zero); g under 2000 is 0. The tables by s = 0 to 5: thresholds 50000, 2500, 1500, 1000, 500, 0 and 50000, 7500, 7500, 7500, 5000, 5000; factors 0, 2, 3, 4, 6, 6 and 0, 2, 3, 4, 4, 6 (code constants until harvested into the pack, RMG-STUB-3)."
+quirks   = []
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T1a2c, T1c, T4d1): rmg_connection_by_land 0x54137B to 0x5413E7, the tables rmg_guard_threshold_low 0x6823F0, rmg_guard_threshold_high 0x682408, rmg_guard_factor_low 0x682420, rmg_guard_factor_high 0x682438; survey E14-generator.md §2.3 (\"The guards\"), §3.2.7"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "The phase oracle (E14 T4d1): the corpus's guarded land passages (a side draw 0x541673 exactly when g > 0) draw as the original's at weak, normal and strong monsters"
+  confidence = "high"
+
+[[rule]]
+id       = "RMG-CON-020"
+title    = "A connection's guard monsters"
+context  = "rmg"
+status   = "implemented"
+summary  = "Per land passage with g > 0 after its Border Guards (RMG-CON-014): rand() & 1 (0x541673) puts the monster at P (0) or Q (1); on that cell, when it holds no object, RMG-CON-021's monster worth g for the zone generator of the cell's zone byte (P's is k's, Q's f's), placed through the generator's slot 1 (rmg_generator_add_object, its entrance's distance flood) when one is created. A shipyard (RMG-CON-015) with g > 0 and no Border Guard placed: the monster on the cell of its entrance's column on the row below its anchor, for its cell's zone generator (k's); gates (RMG-CON-016): one below each entrance, k's level first; monoliths (RMG-CON-017): one below each entrance's anchor, (x, y + 1), for the zone generator of that cell's zone byte (inline at 0x541F35, 0x542520 and 0x542D80: RMG-CON-018's value, the same tables and 2000)."
+quirks   = []
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T1a2c, T4d1): rmg_connection_by_land 0x541665 to 0x541746, rmg_connection_by_shipyard 0x541F24 to 0x54205C, rmg_connection_by_gate 0x54250D to 0x542906, rmg_connection_by_monoliths 0x542EDA to 0x542F52 and 0x54305C to 0x5430D4, rmg_map_item 0x5378E0, rmg_generator_add_object 0x5402A0; survey E14-generator.md §2.3 (\"The guards\"), §3.2.7"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "The phase oracle (E14 T4d1): the corpus's land passages draw the side and the monster's three draws as the original's; on the 25 cases every way's monsters are placed as step 6's dump has them"
+  confidence = "high"
+
+[[rule]]
+id       = "RMG-CON-021"
+title    = "The guard monster"
+context  = "rmg"
+status   = "implemented"
+summary  = "rmg_guard_monster_create (steps 6, 8, 10) for a value g and a zone generator: the towns allowed are its town type alone when its zone's monsters match its town (+0x94) and it has one (+0x4 not -1; a type past Conflux allows none), else the zone's neutral byte and its nine monster towns (+0x95 to +0x9E, RMG-QUIRK-11 at the template's reading). Per creature id the last monster prototype (class 54's vector, sorted by subclass; a subclass past 144 a fault) of that subclass; RoE drops those from 118. From the last creature filtered (116 for RoE, else 144) down to 0, a creature (the creature table, 0x74-byte records: town +0, level +4 from 0, AI value +0x40, the adventure map's counts +0x6C and +0x70) fits when AI x ((low + high) / 2) <= g <= AI x 100 (32-bit), its level is 0 or more (the four unused ids 122, 124, 126, 128 are level -1) and its town allowed (neutral -1); one that does not loses its prototype. None fits: no monster, no draw. Else r = rand() % the fitting count (0x540C61, signed), the creature the (r + 1)-th with a prototype from 144 down (RMG-QUIRK-10: RoE's 117, unfiltered, can be walked to; walked past them all, a fault); its count n = (g + AI / 2) / AI (AI 0 a fault), then with s = n / 4 + 1 > 1, n + rand() % s (0x540CCE) - rand() % s (0x540CD8). The monster (0x2C bytes, its +0x24 3) takes the generator's serial +0xF44 (then raised) and raises its prototype's use count. The port reads the creature table from the core ruleset's creatures by the packs' keys of the original's ids (the packs' handles are not those ids)."
+quirks   = ["RMG-QUIRK-3", "RMG-QUIRK-4", "RMG-QUIRK-10", "RMG-QUIRK-11"]
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T1a2c, T1c, T4d1): rmg_guard_monster_create 0x540B20 (0x540B36 the towns, 0x540B73 the prototypes, 0x540BB6 RoE's range, 0x540BE3 to 0x540C54 the filter, 0x540C61 to 0x540C81 the walk, 0x540C94 to 0x540CE7 the count, 0x540CE9 the object); the creature table creature_table_pointer 0x6747B0 (the unused ids' town 8, level -1); CRTRAITS.TXT (the unused ids' zeros); survey E14-generator.md §2.3 (\"The guards\"), §3.2.7"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "The phase oracle (E14 T4d1): the corpus's guard monsters (SoD) draw their creature and counts as the original's (0x540C61, 0x540CCE, 0x540CD8) and the 4 cases made by land alone place them as step 6's dump has them; no RoE case (RMG-QUIRK-10's half unit-tested only)"
   confidence = "high"

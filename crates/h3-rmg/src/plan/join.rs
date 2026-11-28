@@ -101,13 +101,15 @@ pub(crate) fn cost_flood(cells: &mut Cells, objects: &Objects, [x, y, z]: [i32; 
     }
 }
 
-/// `rmg_path_carve` 0x5408E0 from the cell `from` with its flag clear (the joining's): when its
-/// cost (+0x1C bits 0-15) is 1 to 29999, back along the cells it was entered from (+0x10 to
-/// +0x18) while their cost is above 0, each cell kept free (bit 27 set, 26 cleared) and the cells
-/// of the start's zone in its 3 × 3 clamped to the map without +0x2C bit 0 losing bit 26. The
-/// walk ends: every cost on it is below the one before, down to a cell of cost 0.
+/// `rmg_path_carve` 0x5408E0 from the cell `from` with its flag `border_guard` (clear from the
+/// joining, a land connection's Border Guard flag from `rmg_connection_by_land`): when its cost
+/// (+0x1C bits 0-15) is 1 to 29999, back along the cells it was entered from (+0x10 to +0x18)
+/// while their cost is above 0, each cell kept free (bit 27 set, 26 cleared) and, with the flag
+/// clear, the cells of the start's zone in its 3 × 3 clamped to the map without +0x2C bit 0
+/// losing bit 26. The walk ends: every cost on it is below the one before, down to a cell of
+/// cost 0.
 // rule: RMG-CON-011
-fn carve(cells: &mut Cells, [x, y, z]: [i32; 3]) {
+pub(crate) fn carve(cells: &mut Cells, [x, y, z]: [i32; 3], border_guard: bool) {
     let (w, h, _) = cells.size();
     let start = cells.clamped(x, y, z);
     let zone = start.zone_index();
@@ -119,13 +121,15 @@ fn carve(cells: &mut Cells, [x, y, z]: [i32; 3]) {
         let c = cells.clamped_mut(at[0], at[1], at[2]);
         // stub: RMG-STUB-1 — a cell with +0x2C bit 0 gets its pending Border Guard here
         // (`rmg_prototype_draw` 0x546154 of the colour, placed by the generator's slot 1, +0x2C
-        // bits 0-4 cleared; E14 T4d): none is pending before step 6's connections.
+        // bits 0-4 cleared; E14 T4d2): none is pending before step 6's Border Guards.
         c.tile_data = (c.tile_data & !OBSTACLES) | KEPT;
         let previous = c.previous;
-        for (u, v) in around(w, h, at[0], at[1]) {
-            let n = cells.clamped_mut(u, v, at[2]);
-            if n.zone_index() == zone && !pending(n.pending_guard) {
-                n.tile_data &= !OBSTACLES;
+        if !border_guard {
+            for (u, v) in around(w, h, at[0], at[1]) {
+                let n = cells.clamped_mut(u, v, at[2]);
+                if n.zone_index() == zone && !pending(n.pending_guard) {
+                    n.tile_data &= !OBSTACLES;
+                }
             }
         }
         at = previous;
@@ -219,7 +223,7 @@ pub(crate) fn join(input: &PlanInput<'_>, cells: &mut Cells) -> Result<(), usize
                     && c.near_cost() != 0
                     && land != u32::from(WATER)
                 {
-                    carve(cells, [x, y, z]);
+                    carve(cells, [x, y, z], false);
                     cost_flood(cells, input.objects, [x, y, z], water);
                 }
             }

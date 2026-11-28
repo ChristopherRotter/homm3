@@ -5,11 +5,12 @@
 use std::collections::BTreeMap;
 
 use h3_rmg::{
-    Choices, CrtRand, Fit, GenerateError, GeneratedMap, MapFormat, MapSize, MemoryZone, Monsters,
-    Objects, PaintFault, PartitionFault, PositionError, SITE_ISLET_CENTRE, SITE_TEMPLATE,
-    SITE_TOWN_CENTRAL_CELL, SITE_TOWN_TYPE_ANY, SITE_WATER, SITE_ZONE_POSITION,
-    SITE_ZONE_TERRAIN_TOWN, SITE_ZONE_TOWN_TYPE, Settings, SettingsError, StepState, TerrainFault,
-    Trace, Water, ZoneGenerator, ZoneMemory, generate, kept_templates, resolve_random,
+    Choices, CrtRand, Fit, GUARD_CREATURES, GenerateError, GeneratedMap, GuardCreature, MapFormat,
+    MapSize, MemoryZone, Monsters, Objects, PaintFault, PartitionFault, PositionError,
+    SITE_ISLET_CENTRE, SITE_TEMPLATE, SITE_TOWN_CENTRAL_CELL, SITE_TOWN_TYPE_ANY, SITE_WATER,
+    SITE_ZONE_POSITION, SITE_ZONE_TERRAIN_TOWN, SITE_ZONE_TOWN_TYPE, Settings, SettingsError,
+    StepState, TerrainFault, Trace, Water, ZoneGenerator, ZoneMemory, generate, guard_creatures,
+    kept_templates, resolve_random,
 };
 use proptest::prelude::*;
 use std::sync::LazyLock;
@@ -231,7 +232,7 @@ type Case = (
 );
 
 #[rustfmt::skip]
-const CORPUS: [Case; 24] = {
+const CORPUS: [Case; 25] = {
     use MapSize::{ExtraLarge as XL, Large as L, Medium as M, Small as S};
     use Monsters::{Normal as Nm, Strong as St, Weak as Wk};
     use Water::{Islands as I, None as D, Normal as N};
@@ -260,6 +261,7 @@ const CORPUS: [Case; 24] = {
         ("s1-3p-2sm2i2", S, 1, 3, 0, 0, 0, N, Nm, 1_350_000_003, "2SM2i(2)"),
         ("s1-2p-2sm0k", S, 1, 2, 0, 0, 0, N, Nm, 1_350_000_000, "2SM0k"),
         ("s1-1p-c1-2sm0k", S, 1, 1, 0, 1, 0, N, Nm, 1_450_000_002, "2SM0k"),
+        ("m1-2p-ready", M, 1, 2, 0, 0, 0, N, Nm, 2_120_000_037, "Ready \nor Not"),
     ]
 };
 
@@ -291,7 +293,7 @@ fn the_corpus_draws_the_originals_templates() {
         let map = map.unwrap_or_else(|e| panic!("{id}: {e}"));
         assert_eq!(map.template_name, name, "{id}");
         assert_eq!(log.frame(), [(SITE_TEMPLATE, first_rand(seed))], "{id}");
-        assert_eq!(log.steps, [0, 1, 2, 3, 4, 5], "{id}");
+        assert_eq!(log.steps, [0, 1, 2, 3, 4, 5, 6], "{id}");
         assert_eq!((map.seed, map.settings), (seed, s), "{id}");
         assert_eq!(packs.1.templates()[map.template.index].name, name, "{id}");
     }
@@ -349,7 +351,7 @@ fn under_two_players_in_all_the_run_takes_one_and_one() {
         [Some(0), Some(1), None, None, None, None, None, None]
     );
     assert_eq!(map.template.zones.len(), 3);
-    assert_eq!(log.steps, [0, 1, 2, 3, 4, 5]);
+    assert_eq!(log.steps, [0, 1, 2, 3, 4, 5, 6]);
     // Two players: Twin Vales has one human start, so nothing is kept.
     let two = settings(&choices(MapSize::Medium, 2, 0));
     assert_eq!(run(&packs, &two, 7).0, Err(GenerateError::NoTemplate));
@@ -563,9 +565,10 @@ fn any_choices() -> impl Strategy<Value = Choices> {
 proptest! {
     #![proptest_config(ProptestConfig { cases: 64, ..ProptestConfig::default() })]
 
-    /// Arbitrary choices, seeds and either profile run the frame and steps 1 to 5 over the
-    /// original tables without a panic (exit criterion (d)); a map's template is kept, its
-    /// positions' colours distinct, one per player and computer (or the error says why not).
+    /// Arbitrary choices, seeds and either profile run the frame and steps 1 to 6 (its Border
+    /// Guards stubs) over the original tables without a panic (exit criterion (d)); a map's
+    /// template is kept, its positions' colours distinct, one per player and computer (or the
+    /// error says why not).
     #[test]
     fn arbitrary_settings_never_panic(
         c in any_choices(),
@@ -586,7 +589,7 @@ proptest! {
             colours.dedup();
             let run = map.settings;
             prop_assert_eq!(colours.len(), usize::from(run.players + run.computers));
-            prop_assert_eq!(log.steps, vec![0, 1, 2, 3, 4, 5]);
+            prop_assert_eq!(log.steps, vec![0, 1, 2, 3, 4, 5, 6]);
             prop_assert!(map.settings.water != Water::Random);
             // Step 1: a zone generator per kept zone, on the map's levels, a land terrain on
             // level 0 and subterranean or lava on level 1, town types of the nine or none; step
@@ -628,10 +631,20 @@ proptest! {
             }
             // Steps 4 and 5: each town an object of class 98 with its entrance a road target, its
             // serial the next, its owner neutral or a position's colour, its zone with a first
-            // town whose entrance is that zone's first road target.
+            // town whose entrance is that zone's first road target. Step 6 appends each
+            // shipyard's entrance.
             let placed = &map.placed;
-            prop_assert_eq!(placed.towns.len(), placed.road_targets.len());
-            prop_assert_eq!(map.objects.serial(), placed.towns.len() as i32 + 1);
+            let guards = &map.connected.monsters;
+            let yards: Vec<_> = map.objects.placed().iter().filter(|o| o.class == 87).collect();
+            prop_assert_eq!(placed.towns.len() + yards.len(), placed.road_targets.len());
+            for (o, &[x, y, z]) in yards.iter().zip(&placed.road_targets[placed.towns.len()..]) {
+                let [ex, ey] = map.objects.prototypes()[o.prototype].shape.entrance;
+                prop_assert_eq!([o.position[0] - ex, o.position[1] - ey, o.position[2]], [x, y, z]);
+            }
+            prop_assert_eq!(
+                map.objects.serial(),
+                (placed.towns.len() + guards.len()) as i32 + 1
+            );
             for (k, t) in placed.towns.iter().enumerate() {
                 let o = &map.objects.placed()[t.object];
                 prop_assert_eq!(o.class, 98);
@@ -648,7 +661,79 @@ proptest! {
                 let cell = map.cells.get(x, y, z).unwrap();
                 prop_assert_eq!(i32::from(cell.zone_byte() as i8), map.template.zones[map.zones[t.zone].zone].id);
             }
+            // Step 6: each guard monster an object of class 54 after the towns, its serial the
+            // next, of a count of 1 or more; each passage end of its zone generator's zone, on
+            // its level, or kept free (bit 27: the row below a shipyard, of any zone).
+            for (k, m) in guards.iter().enumerate() {
+                prop_assert_eq!(map.objects.placed()[m.object].class, 54);
+                prop_assert_eq!(m.serial, (placed.towns.len() + k) as i32 + 1);
+                prop_assert!(m.count >= 1);
+            }
+            prop_assert_eq!(map.connected.passages.len(), map.zones.len());
+            for (g, ends) in map.zones.iter().zip(&map.connected.passages) {
+                for &[x, y] in ends {
+                    let cell = map.cells.get(x, y, g.position[2]).unwrap();
+                    prop_assert!(
+                        i32::from(cell.zone_byte() as i8) == map.template.zones[g.zone].id
+                            || cell.tile_data & 1 << 27 != 0
+                    );
+                }
+            }
+            // Step 6's monoliths: the one-way entrances and exits (+0x14C0) and the two-way ones
+            // (+0x14D0), each placed once, every monolith placed among them.
+            let objects = map.objects.placed();
+            let (one_way, two_way) = (&map.connected.one_way, &map.connected.two_way);
+            for &o in one_way {
+                prop_assert!([43, 44].contains(&objects[o].class));
+            }
+            for &o in two_way {
+                prop_assert_eq!(objects[o].class, 45);
+            }
+            let mut listed: Vec<usize> = one_way.iter().chain(two_way).copied().collect();
+            listed.sort_unstable();
+            listed.dedup();
+            prop_assert_eq!(listed.len(), one_way.len() + two_way.len());
+            let monoliths = objects.iter().filter(|o| (43..=45).contains(&o.class)).count();
+            prop_assert_eq!(monoliths, listed.len());
         }
+    }
+}
+
+// covers: RMG-CON-021
+/// The guards' creature table from the original packs, by the original's ids 0 to 144: the
+/// packs' handles are not those ids (`base` lists the war machines after 117, `ab` its creatures
+/// after them), their keys are; the four ids CRTRAITS.TXT leaves unused have none (level -1,
+/// never fitting), every other id a monster prototype; the town and the level as the creature
+/// table holds them (0x6747B0's records: levels from 0), the AI value and the counts as the
+/// packs harvested them.
+#[test]
+fn the_guards_read_the_creature_table_by_the_originals_ids() {
+    let (core, part) = original("base:faithful");
+    let table = guard_creatures(core);
+    assert_eq!(table.len(), GUARD_CREATURES);
+    let unused: Vec<usize> = (0..GUARD_CREATURES)
+        .filter(|&c| table[c] == GuardCreature::UNUSED)
+        .collect();
+    assert_eq!(unused, [122, 124, 126, 128]);
+    let row = |faction, level, ai_value, counts| GuardCreature {
+        faction,
+        level,
+        ai_value,
+        counts,
+    };
+    assert_eq!(table[0], row(0, 0, 80, [20, 50]));
+    assert_eq!(table[117], row(-1, 5, 775, [8, 12]));
+    assert_eq!(table[118], row(8, 0, 55, [20, 50]));
+    assert_eq!(table[144], row(-1, 4, 1024, [8, 12]));
+    let tables = part.generator().unwrap();
+    let objects = Objects::new(
+        part.object_templates(),
+        &tables.object_settings,
+        MapFormat::SoD,
+        0,
+    );
+    for c in (0..GUARD_CREATURES).filter(|c| !unused.contains(c)) {
+        assert!(objects.with_subclass(54, c as u32).next().is_some(), "{c}");
     }
 }
 
@@ -657,7 +742,8 @@ proptest! {
 /// below 232, AB's format those below 222 but SoD's monoliths and gates past subclass 2, RoE's
 /// below 165 likewise; AB's and SoD's decorations 165 to 205 file among RoE's 114 to 161 (their
 /// class group); the monsters' prototypes rise by subclass. A generated map has them, its
-/// placed objects steps 4 and 5's towns.
+/// placed objects steps 4 and 5's towns and step 6's (`s1-2p-c1-islands`: guard monsters and
+/// two-way monoliths among them), each prototype used once per object placed from it.
 #[test]
 fn the_originals_prototypes_are_filed_by_the_format() {
     let (_, part) = original("base:faithful");
@@ -703,11 +789,16 @@ fn the_originals_prototypes_are_filed_by_the_format() {
             .any(|&p| sod.prototypes()[p].shape.class >= 165)
     }));
     let (core, part) = original("base:faithful");
-    let (_, s, seed, _) = corpus_settings(0);
+    let (_, s, seed, _) = corpus_settings(2);
     let map = generate(core, part, &s, seed, &mut Log::default()).unwrap();
-    // Steps 4 and 5 placed towns only.
-    assert!(!map.objects.placed().is_empty());
-    assert!(map.objects.placed().iter().all(|o| o.class == 98));
+    // Steps 4 and 5 placed towns, step 6 guard monsters, shipyards, gates and monoliths.
+    assert!(!map.connected.two_way.is_empty());
+    assert!(
+        map.objects
+            .placed()
+            .iter()
+            .all(|o| { [98, 54, 87, 103, 43, 44, 45].contains(&o.class) })
+    );
     let filed = |o: &Objects| -> Vec<_> {
         o.prototypes()
             .iter()
@@ -715,9 +806,9 @@ fn the_originals_prototypes_are_filed_by_the_format() {
             .collect()
     };
     assert_eq!(filed(&map.objects), filed(&sod));
-    // The towns' prototypes are used (+0x8) once per town.
+    // The prototypes are used (+0x8) once per object placed.
     let used: i32 = map.objects.prototypes().iter().map(|p| p.used).sum();
-    assert_eq!(used as usize, map.placed.towns.len());
+    assert_eq!(used as usize, map.objects.placed().len());
     assert_eq!(map.objects.zone_count(map.zones.len() - 1).len(), 232);
 }
 
@@ -749,38 +840,6 @@ fn the_corpus_starts_without_ownership_place_the_colours_as_the_original() {
 // covers: RMG-ZON-006, RMG-ZON-007, RMG-ZON-008, RMG-ZON-009, RMG-ZON-010, RMG-ZON-011
 // covers: RMG-ZON-012, RMG-ZON-013, RMG-ZON-014, RMG-TER-001, RMG-TER-002, RMG-TER-003
 // covers: RMG-TER-005, RMG-TER-007, RMG-TER-009, RMG-TER-012, RMG-TER-014, RMG-TER-015
-// covers: RMG-OBJ-009, RMG-OBJ-010, RMG-OBJ-011, RMG-TWN-001, RMG-TWN-002, RMG-TWN-003
-// covers: RMG-TWN-004, RMG-TWN-005
-/// The comparison seam (ADR-0029 point 8) over the oracle's corpus: the port's draws before step
-/// 1, in it and in steps 2 to 5, and its dumps after the frame and after steps 1 to 5 (the
-/// towns' objects with the cells), have the phase oracle's digests
-/// (`clients/capture/rmg/phases.txt`), step 2's unwritten bytes as the memory record measured
-/// them (`zones.txt`, RMG-QUIRK-1). Step 2's water connections show in step 6's cells (increment
-/// 4). RMG-QUIRK-13 and -25 in `faithful` are among them: `xl1-4p-seed1`'s zone 3 and
-/// `xl2-8p-t4-islands`' zone 4, human starts with only their border cells, get no town.
-#[test]
-fn the_corpus_draws_and_dumps_as_the_phase_oracle_to_step_5() {
-    let packs = original("base:faithful");
-    let kept = kept_phases();
-    let memory = kept_zone_memory();
-    assert_eq!(kept.len(), CORPUS.len());
-    for case in 0..CORPUS.len() {
-        let (id, s, seed, _) = corpus_settings(case);
-        let mut t = Phases {
-            memory: memory.get(id).cloned().unwrap_or_default(),
-            ..Phases::default()
-        };
-        generate(&packs.0, &packs.1, &s, seed, &mut t).unwrap_or_else(|e| panic!("{id}: {e}"));
-        let (phases, cells) = &kept[id];
-        for phase in ["setup", "template", "1", "2", "3", "4", "5"] {
-            assert_eq!(t.phases.get(phase), phases.get(phase), "{id} {phase}");
-        }
-        for step in [0, 1, 2, 3, 4, 5] {
-            assert_eq!(t.cells.get(&step), cells.get(&step), "{id} cells {step}");
-        }
-    }
-}
-
 /// `plan.txt`'s lines by case: the lanes' draws and their digest, the draws of step 6's plan and
 /// theirs.
 type KeptPlan = ((usize, String), (usize, String));
@@ -803,21 +862,35 @@ fn kept_plan() -> BTreeMap<String, KeptPlan> {
         .collect()
 }
 
+// covers: RMG-OBJ-009, RMG-OBJ-010, RMG-OBJ-011, RMG-TWN-001, RMG-TWN-002, RMG-TWN-003
+// covers: RMG-TWN-004, RMG-TWN-005
 // covers: RMG-CON-001, RMG-CON-002, RMG-CON-003, RMG-CON-004, RMG-CON-005, RMG-CON-006
 // covers: RMG-CON-007, RMG-CON-008, RMG-CON-009, RMG-CON-010, RMG-CON-011, RMG-CON-012
-// covers: RMG-TER-005
-/// Step 6's plan over the oracle's corpus (`clients/capture/rmg/plan.txt`, E14 T4c), step 2's
-/// unwritten bytes as measured (`zones.txt`): the port's first draws after step 5's end are the
-/// original's lanes (`rmg_free_lanes_draw`'s, their count and digest), and its draws after step
-/// 5 are the plan's whole (count and digest) in all 24 cases: the walls, the cells of no zone
-/// and the joining draw nothing, the islets (4 cases) and the sealed shores (11 cases, their
-/// painters flushed from one land to the next) draw as the original's.
+// covers: RMG-CON-013, RMG-CON-014, RMG-CON-015, RMG-CON-017, RMG-CON-018, RMG-CON-020
+// covers: RMG-CON-021, RMG-TER-005
+/// The comparison seam (ADR-0029 point 8) over the oracle's corpus, step 2's unwritten bytes as
+/// the memory record measured them (`zones.txt`, RMG-QUIRK-1): the port's draws before step 1,
+/// in it and in steps 2 to 6, and its dumps after the frame and after steps 1 to 6 (the objects
+/// with the cells) have the phase oracle's digests (`clients/capture/rmg/phases.txt`) in all 25
+/// cases. RMG-QUIRK-13 and -25 in `faithful` are among them: `xl1-4p-seed1`'s zone 3 and
+/// `xl2-8p-t4-islands`' zone 4, human starts with only their border cells, get no town. Step 6
+/// whole (E14 T4d1): first the original's lanes (`plan.txt`: `rmg_free_lanes_draw`'s, their
+/// count and digest), then its plan's draws (the walls, the cells of no zone and the joining
+/// draw nothing; the islets, 4 cases, and the sealed shores, 11 cases, draw as the original's),
+/// then the connections: by land, by a shipyard (8 cases), by gates and by monoliths (20 cases,
+/// two-way in all, one-way in `l1-4p-a`, `xl1-6p-c2` and `xl2-8p-t4-islands`, RMG-QUIRK-26 on;
+/// `l1-4p-a`'s self-connection of 6LM10's zone 13 made twice by monoliths, both ends in the
+/// zone), with their guard monsters. `m1-2p-ready`'s three Border Guard connections are made by
+/// land, their tents finding no room in the original: the stub's (RMG-STUB-1, nothing placed)
+/// leaves the same map.
 #[test]
-fn the_corpus_draws_step_6s_plan_as_the_original() {
+fn the_corpus_draws_and_dumps_as_the_phase_oracle_to_step_6() {
     let packs = original("base:faithful");
-    let kept = kept_plan();
+    let kept = kept_phases();
+    let plans = kept_plan();
     let memory = kept_zone_memory();
     assert_eq!(kept.len(), CORPUS.len());
+    assert_eq!(plans.len(), CORPUS.len());
     for case in 0..CORPUS.len() {
         let (id, s, seed, _) = corpus_settings(case);
         let mut t = Phases {
@@ -825,21 +898,28 @@ fn the_corpus_draws_step_6s_plan_as_the_original() {
             ..Phases::default()
         };
         generate(&packs.0, &packs.1, &s, seed, &mut t).unwrap_or_else(|e| panic!("{id}: {e}"));
-        let ((lanes, digest), plan) = &kept[id];
+        let ((lanes, digest), plan) = &plans[id];
         let after = &t.log.draws[t.log.ends[5]..];
-        assert!(after.len() >= *lanes, "{id}: {} draws", after.len());
+        assert!(after.len() >= plan.0, "{id}: {} draws", after.len());
         assert_eq!(
             lines_digest(&after[..*lanes]),
             (*lanes, digest.clone()),
             "{id}"
         );
-        assert_eq!(lines_digest(after), *plan, "{id}");
+        assert_eq!(lines_digest(&after[..plan.0]), *plan, "{id}");
+        let (phases, cells) = &kept[id];
+        for phase in ["setup", "template", "1", "2", "3", "4", "5", "6"] {
+            assert_eq!(t.phases.get(phase), phases.get(phase), "{id} {phase}");
+        }
+        for step in [0, 1, 2, 3, 4, 5, 6] {
+            assert_eq!(t.cells.get(&step), cells.get(&step), "{id} cells {step}");
+        }
     }
 }
 
 // covers: RMG-ZON-010, RMG-ZON-011
 /// The oracle model's own bytes (RMG-QUIRK-1, provisional: the temporary zone's 0BB, a water
-/// zone's nine town types) give the oracle's step 2 on 22 of the corpus's 24: `l1-4p-b`'s and
+/// zone's nine town types) give the oracle's step 2 on 23 of the corpus's 25: `l1-4p-b`'s and
 /// `xl2-4p-seed0`'s first and fourteenth water zones have none set (one draw fewer).
 #[test]
 fn the_oracle_models_own_bytes_give_step_2_on_all_but_two() {
@@ -890,7 +970,7 @@ fn the_corpus_appends_the_originals_water_zones() {
     let kept = kept_water();
     let layout = kept_layout();
     let memory = kept_zone_memory();
-    assert_eq!(kept.values().map(Vec::len).sum::<usize>(), 44);
+    assert_eq!(kept.values().map(Vec::len).sum::<usize>(), 55);
     for case in 0..CORPUS.len() {
         let (id, s, seed, _) = corpus_settings(case);
         let mut t = Phases {

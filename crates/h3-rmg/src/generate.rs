@@ -3,8 +3,9 @@
 //! the banned heroes and the positions, the generator's map, then the steps (step 1 since E14
 //! T3c, step 2 since T3d, step 3 since T3e), each draw and each step's end reported to a
 //! [`Trace`]. Steps 4 and 5, the towns, since T4b; step 6's obstacle plan (the lanes, the zone
-//! walls, the cells of no zone, the islets, the joining, the shores' seal) since T4c, step 6 not
-//! ended; its connections, steps 7 to 15 and the writer's content come with increments 4 to 7.
+//! walls, the cells of no zone, the islets, the joining, the shores' seal) since T4c, its
+//! connections since T4d1 (by land, by a shipyard, by gates, by monoliths; the Border Guards
+//! T4d2's); steps 7 to 15 and the writer's content come with increments 4 to 7.
 
 use alloc::string::String;
 use alloc::vec::Vec;
@@ -18,6 +19,7 @@ use h3_content::{
 use h3_kernel::rng::CrtRand;
 
 use crate::cells::Cells;
+use crate::guards::{GuardInput, guard_creatures};
 use crate::layout::{LayoutInput, ZoneGenerator, lay_out};
 use crate::objects::{Object, ObjectFault, Objects};
 use crate::painter::{PaintFault, Pictures};
@@ -25,7 +27,7 @@ use crate::part::RmgRuleset;
 use crate::partition::{
     MemoryZone, Partition, PartitionFault, PartitionInput, ZoneMemory, partition,
 };
-use crate::plan::{PlanInput, plan};
+use crate::plan::{Connected, PlanInput, plan};
 use crate::settings::{COLOURS, Settings, SettingsError, Water};
 use crate::template::{Fit, KeptTemplate, PositionError, kept_templates, positions};
 use crate::terrain::{TerrainFault, TerrainInput, paint};
@@ -199,9 +201,8 @@ impl fmt::Display for GenerateError {
     }
 }
 
-/// A generated map: so far what the frame and steps 1 to 5 make, with step 6's plan (stub
-/// RMG-STUB-1: step 6's connections, steps 7 to 15 and the writer's content come with increments
-/// 4 to 7).
+/// A generated map: so far what the frame and steps 1 to 6 make, step 6's Border Guards aside
+/// (stub RMG-STUB-1: they, steps 7 to 15 and the writer's content come with increments 4 to 7).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GeneratedMap {
     /// The settings as the generator ran them: water drawn, and under two players in all one
@@ -227,6 +228,8 @@ pub struct GeneratedMap {
     pub objects: Objects,
     /// Steps 4 and 5's towns and the road targets (+0x14B0).
     pub placed: Placed,
+    /// Step 6's passages (+0x404), guard monsters and monoliths (+0x14C0, +0x14D0).
+    pub connected: Connected,
 }
 
 /// The stream: `CrtRand` seeded once, each draw reported with its call site.
@@ -268,15 +271,17 @@ impl<'t, T: Trace> Stream<'t, T> {
 /// (`rmg_zones_lay_out` 0x53BCB0); steps 2 and 3; the prototypes (`rmg_objects_read` 0x536200,
 /// read by the constructor; nothing draws there) for the steps that place objects; steps 4 and
 /// 5, the towns (`rmg_zone_first_town` 0x544A50, `rmg_zone_towns_place` 0x544AE0 per zone
-/// generator); step 6's plan (`rmg_paths_and_connections` 0x544920: the lanes, the zone walls,
-/// the cells of no zone, the islets, the joining, the shores' seal), step 6 not yet ended.
+/// generator); step 6 (`rmg_paths_and_connections` 0x544920: the lanes, the zone walls, the
+/// cells of no zone, the islets, the joining, the shores' seal, the connections by land, by a
+/// shipyard, by gates and by monoliths and their guard monsters; its Border Guards not yet).
 ///
 /// # Errors
 ///
 /// A [`GenerateError`]: refused settings, a part of another core or without the generator's
 /// tables, no template kept, the drawn template's positions outside the original's arrays, the
 /// steps' divisions by zero (RMG-QUIRK-3), reads and writes outside the original's arrays
-/// (RMG-QUIRK-4) and step 6's zone without an empty cell before any had one (RMG-QUIRK-5).
+/// (RMG-QUIRK-4), step 6's zone without an empty cell before any had one (RMG-QUIRK-5) and its
+/// object faults.
 // rule: RMG-SET-005, RMG-SET-006, RMG-SET-007, RMG-SET-010, RMG-TPL-007
 pub fn generate<T: Trace>(
     core: &Ruleset,
@@ -454,18 +459,45 @@ pub fn generate<T: Trace>(
         );
     }
     let pictures = Pictures::new(tables);
-    plan(
+    let creatures = guard_creatures(core);
+    let connected = plan(
         &mut stream,
-        &PlanInput {
+        &mut PlanInput {
             zones: &template.zones,
             connections: &template.connections,
             gens: &zones,
-            objects: &objects,
+            objects: &mut objects,
+            road_targets: &mut placed.road_targets,
             pictures: &pictures,
             cosmetic: quirks.is_enabled(RMG_COSMETIC),
+            guards: GuardInput {
+                creatures: &creatures,
+                format: run.format,
+                strength: run.monsters.strength(),
+                // stub: RMG-STUB-2 — RMG-QUIRK-10's flag (`quirk.rmg.roe_guard_walk`) registered
+                // at T4d2; every profile as faithful until then.
+                roe_guard_walk: true,
+            },
+            // stub: RMG-STUB-2 — RMG-QUIRK-19's flag (`quirk.rmg.shipyard_sites_repeated`)
+            // registered at T4d2; every profile as faithful until then.
+            shipyard_sites_repeated: true,
+            // stub: RMG-STUB-2 — RMG-QUIRK-9's flag (`quirk.rmg.underground_wide_walled`)
+            // registered at T4d2; every profile as faithful until then.
+            underground_wide_walled: true,
+            // stub: RMG-STUB-2 — RMG-QUIRK-26's flag (`quirk.rmg.monolith_channels_shared`)
+            // registered at T4d2; every profile as faithful until then.
+            monolith_channels_shared: true,
         },
         &mut cells,
     )?;
+    stream.trace.step_end(
+        6,
+        StepState {
+            cells: &cells,
+            zones: &zones,
+            objects: objects.placed(),
+        },
+    );
     // stub: RMG-STUB-1
     Ok(GeneratedMap {
         settings: run,
@@ -479,5 +511,6 @@ pub fn generate<T: Trace>(
         partition,
         objects,
         placed,
+        connected,
     })
 }
