@@ -44,9 +44,9 @@ pub(super) fn step(
 ) -> GameCommand {
     let adventure = state.adventure();
     let owns = |hero| {
-        adventure.hero(hero).is_some_and(|h| h.owner == player)
-            || towns_of(state, player)
-                .any(|town| adventure.town_hero(town).is_some_and(|h| h.id == hero))
+        let on_map = adventure.heroes().iter().filter(|h| h.owner == player);
+        let held = towns_of(state, player).filter_map(|town| adventure.town_hero(town));
+        on_map.chain(held).any(|h| h.id == hero)
     };
     let (turn, plans) = memory.turn_of(state.day(), || start(state, rules, player), owns);
     loop {

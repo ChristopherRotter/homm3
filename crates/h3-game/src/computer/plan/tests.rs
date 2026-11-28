@@ -70,8 +70,17 @@ fn planning<T>(
 ) -> T {
     let details = case.state.hero(on_map.id).unwrap();
     let fighter = Fighter { on_map, details };
-    let valued = Valued::new(case.state, case.rules, (&case.record, &case.weights), fighter);
-    let planner = Planner::new((case.state, case.rules), &valued, (&case.record, danger, flag));
+    let valued = Valued::new(
+        case.state,
+        case.rules,
+        (&case.record, &case.weights),
+        fighter,
+    );
+    let planner = Planner::new(
+        (case.state, case.rules),
+        &valued,
+        (&case.record, danger, flag),
+    );
     f(&planner)
 }
 
@@ -87,7 +96,10 @@ fn world(
     objects: &[(&str, Pos)],
     edit: impl FnOnce(&mut GameSetup),
 ) -> GameState {
-    let objects = objects.iter().map(|&(k, at)| object(rules, k, at)).collect();
+    let objects = objects
+        .iter()
+        .map(|&(k, at)| object(rules, k, at))
+        .collect();
     fixture::game(rules, objects, edit)
 }
 
@@ -139,7 +151,18 @@ fn the_claims_take_the_classes_0_to_36_and_the_numbers_part_the_merged_classes()
     let banks = [
         ((true, true, None), 85),
         ((true, false, None), 24),
-        ((false, false, Some(OnceBonus { morale: -1, luck: 0, mark: 14 })), 84),
+        (
+            (
+                false,
+                false,
+                Some(OnceBonus {
+                    morale: -1,
+                    luck: 0,
+                    mark: 14,
+                }),
+            ),
+            84,
+        ),
         ((false, true, None), 16),
     ];
     for ((deck, coast, looted), class) in banks {
@@ -181,7 +204,10 @@ fn the_claims_take_the_classes_0_to_36_and_the_numbers_part_the_merged_classes()
     assert_eq!(of("t:faerie", Class::FaerieRing, &faerie, false), 28);
     let guard = ObjectKind::KeyGuard { key: 0 };
     assert_eq!(of("t:chart", Class::Other, &guard, false), 9);
-    assert_eq!(of("t:chart", Class::Other, &ObjectKind::Tavern, false), u8::MAX);
+    assert_eq!(
+        of("t:chart", Class::Other, &ObjectKind::Tavern, false),
+        u8::MAX
+    );
 }
 
 // covers: CPU-PLN-001
@@ -365,11 +391,22 @@ fn jump_rules(boats: u16) -> GameRuleset {
 
 /// The jumps of red's hero on `state` with its details `edit`ed: the spells known, the mana,
 /// the skills, the worn artifacts.
-fn jumps_of(state: &GameState, rules: &GameRuleset, edit: impl FnOnce(&mut HeroDetails)) -> SearchJumps {
+fn jumps_of(
+    state: &GameState,
+    rules: &GameRuleset,
+    edit: impl FnOnce(&mut HeroDetails),
+) -> SearchJumps {
     let on_map = state.adventure().hero(HERO).unwrap();
     let mut details = state.hero(HERO).unwrap().clone();
     edit(&mut details);
-    jumps(state, rules, Fighter { on_map, details: &details })
+    jumps(
+        state,
+        rules,
+        Fighter {
+            on_map,
+            details: &details,
+        },
+    )
 }
 
 /// The spell `k` of `rules`.
@@ -451,10 +488,20 @@ fn the_jumps_are_the_castable_spells_and_the_levels_of_their_masteries() {
         target: None,
     };
     let mut events = Vec::new();
-    crate::apply(&mut flown, &rules, crate::Actor::Player(RED), cast, &mut events).unwrap();
+    crate::apply(
+        &mut flown,
+        &rules,
+        crate::Actor::Player(RED),
+        cast,
+        &mut events,
+    )
+    .unwrap();
     assert_eq!(flown.adventure().day_spells(HERO).fly, Some(1));
     let lowered = jumps_of(&flown, &rules, known(45, vec![(air, 3)]));
-    assert_eq!((lowered.fly_level, lowered.water_walk_level), (Some(1), Some(3)));
+    assert_eq!(
+        (lowered.fly_level, lowered.water_walk_level),
+        (Some(1), Some(3))
+    );
     // Angel Wings and the Boots: flying and water walking at 3 without the spells.
     let wearing = jumps_of(&state, &rules, |d| {
         d.worn[2] = worn(&rules, "t:wings");
@@ -547,7 +594,14 @@ fn summon_boat_is_a_jump_with_a_boat_to_bring_or_room_for_one_at_advanced_but_no
             path: vec![p(1, 0)],
         });
         let mut events = Vec::new();
-        crate::apply(&mut state, &rules, crate::Actor::Player(RED), board, &mut events).unwrap();
+        crate::apply(
+            &mut state,
+            &rules,
+            crate::Actor::Player(RED),
+            board,
+            &mut events,
+        )
+        .unwrap();
         assert!(state.adventure().hero(HERO).unwrap().boat.is_some());
         let air = rules.core().skill_by_key("t:air_magic").unwrap();
         let spells = vec![spell(&rules, "t:summon")];
@@ -621,7 +675,11 @@ fn at_tile(list: &[Candidate], pos: Pos) -> Option<Candidate> {
 #[test]
 fn the_candidates_are_the_reached_entrances_of_value_but_the_hero_s_own_tile() {
     let rules = fixture::rules();
-    let state = world(&rules, &[("t:campfire", p(1, 0)), ("t:chart", p(0, 1))], |_| {});
+    let state = world(
+        &rules,
+        &[("t:campfire", p(1, 0)), ("t:chart", p(0, 1))],
+        |_| {},
+    );
     let case = Case::new(&state, &rules);
     let reads = Reads::of(&case);
     let (danger, list) = reads.red((&state, &rules), |planner| {
@@ -640,9 +698,10 @@ fn the_candidates_are_the_reached_entrances_of_value_but_the_hero_s_own_tile() {
     assert_eq!(at_tile(&list, p(1, 0)), Some(campfire));
     assert_eq!(at_tile(&list, p(0, 1)), None);
     assert_eq!(at_tile(&list, p(0, 0)), None);
-    assert!(list.iter().all(|c| c.pos.is_some_and(|pos| {
-        crate::computer::objects::at(&state, &rules, pos).is_some()
-    })));
+    assert!(list.iter().all(|c| {
+        c.pos
+            .is_some_and(|pos| crate::computer::objects::at(&state, &rules, pos).is_some())
+    }));
     // In danger on its own tile, the chart's 0 counts: a place to flee to.
     let fled = Reads {
         danger: flat(&state, -1),
@@ -706,7 +765,8 @@ fn a_colleague_claims_a_claimed_class_it_reaches_more_cheaply_from_its_kept_dest
         colleague.pos = p(2, 0);
         s.heroes.push(colleague);
         for at in [p(1, 0), p(1, 1), p(0, 1)] {
-            s.map.tiles[usize::from(at.y) * 12 + usize::from(at.x)].terrain = TerrainId::from_raw(1);
+            s.map.tiles[usize::from(at.y) * 12 + usize::from(at.x)].terrain =
+                TerrainId::from_raw(1);
         }
     });
     let case = Case::new(&boxed, &rules);
@@ -878,7 +938,11 @@ fn the_score_reads_the_field_the_key_the_danger_and_a_guard_then_draws() {
         treasure: vec![],
         artifact: None,
     });
-    let state = fixture::game(&rules, vec![object(&rules, "t:campfire", p(5, 0)), weak], |_| {});
+    let state = fixture::game(
+        &rules,
+        vec![object(&rules, "t:campfire", p(5, 0)), weak],
+        |_| {},
+    );
     let case = Case::new(&state, &rules);
     let reads = Reads::of(&case);
     reads.red((&state, &rules), |planner| {
@@ -896,7 +960,13 @@ fn the_score_reads_the_field_the_key_the_danger_and_a_guard_then_draws() {
         let blue = place(&search, p(2, 2));
         assert_eq!((blue.cost, blue.from), (282, p(1, 1)));
         let mut c = candidate(p(2, 2), 1, 999);
-        let s = planner.score(&mut c, &blue, (&search, &field, none), &mut softened, &mut rng);
+        let s = planner.score(
+            &mut c,
+            &blue,
+            (&search, &field, none),
+            &mut softened,
+            &mut rng,
+        );
         let mut draws = stream();
         let r = 75 + i32::try_from(draws.range_inclusive(1, 25)).unwrap();
         assert_eq!((s, c.cost), (5000 * r / 100, 999 - 282 + 141));
@@ -907,7 +977,13 @@ fn the_score_reads_the_field_the_key_the_danger_and_a_guard_then_draws() {
         let monster = case.value(p(6, 0), 500).0;
         assert!(monster > 0, "{monster}");
         let mut c = candidate(p(5, 0), 1, 500);
-        let s = planner.score(&mut c, &camp, (&search, &field, none), &mut softened, &mut rng);
+        let s = planner.score(
+            &mut c,
+            &camp,
+            (&search, &field, none),
+            &mut softened,
+            &mut rng,
+        );
         let r = 75 + i32::try_from(draws.range_inclusive(1, 25)).unwrap();
         assert_eq!(s, (40 + monster) * r / 100);
         // Met on its path, the guard adds nothing.
@@ -916,7 +992,13 @@ fn the_score_reads_the_field_the_key_the_danger_and_a_guard_then_draws() {
             ..camp
         };
         let mut c = candidate(p(5, 0), 1, 500);
-        let s = planner.score(&mut c, &met, (&search, &field, none), &mut softened, &mut rng);
+        let s = planner.score(
+            &mut c,
+            &met,
+            (&search, &field, none),
+            &mut softened,
+            &mut rng,
+        );
         let r = 75 + i32::try_from(draws.range_inclusive(1, 25)).unwrap();
         assert_eq!(s, 40 * r / 100);
         // A score of 1 stays 1; 0 and below × (100.0 / r), truncated.
@@ -926,7 +1008,13 @@ fn the_score_reads_the_field_the_key_the_danger_and_a_guard_then_draws() {
             values[index(p(0, 3))] = value;
             let field = Field(values);
             let mut c = candidate(p(0, 3), 1, 300);
-            let s = planner.score(&mut c, &empty, (&search, &field, none), &mut softened, &mut rng);
+            let s = planner.score(
+                &mut c,
+                &empty,
+                (&search, &field, none),
+                &mut softened,
+                &mut rng,
+            );
             let r = 75 + draws.range_inclusive(1, 25);
             let low = SignedX87::int(100)
                 .over(SignedX87::int(r.into()))
@@ -964,7 +1052,13 @@ fn the_kept_destination_scores_one_and_a_half_and_a_lost_danger_softens_for_a_gr
             let mut values = vec![0; 144];
             values[planner.index(at)] = field;
             let mut c = candidate(at, 1, 300);
-            let s = planner.score(&mut c, node, (&search, &Field(values), asked), softened, &mut rng);
+            let s = planner.score(
+                &mut c,
+                node,
+                (&search, &Field(values), asked),
+                softened,
+                &mut rng,
+            );
             (s, c.must_go)
         };
         // 5 000 000 with a danger of −1e9: softened to −2 500 000, then × 1.5 + 20; a must-go as
@@ -979,7 +1073,10 @@ fn the_kept_destination_scores_one_and_a_half_and_a_lost_danger_softens_for_a_gr
             danger: -1,
             ..fresh
         };
-        assert_eq!(score(-600_000_000, &node, &mut Vec::new()), (-399_999_980, true));
+        assert_eq!(
+            score(-600_000_000, &node, &mut Vec::new()),
+            (-399_999_980, true)
+        );
         assert_eq!(rng, stream(), "the kept destination draws nothing");
     });
 }
@@ -1035,7 +1132,10 @@ fn the_choice_takes_a_must_go_a_value_over_none_near_over_far_then_the_cost_or_t
         let search = planner.search(1000, planner.asking(None)).unwrap();
         // Near: (1, 0) and (0, 1) at 100, (2, 0) at 200; far: (4, 4) and (0, 6), explored.
         let cost = |pos| i32::from(place(&search, pos).cost);
-        assert_eq!([cost(p(1, 0)), cost(p(0, 1)), cost(p(2, 0))], [100, 100, 200]);
+        assert_eq!(
+            [cost(p(1, 0)), cost(p(0, 1)), cost(p(2, 0))],
+            [100, 100, 200]
+        );
         assert!(
             within >= 200 && cost(p(4, 4)) > within && cost(p(0, 6)) > within,
             "{within} {} {}",
@@ -1049,7 +1149,10 @@ fn the_choice_takes_a_must_go_a_value_over_none_near_over_far_then_the_cost_or_t
         assert_eq!((chosen.pos, choice.best, rng), (None, 0, draws(1)));
         let (chosen, score, choice, _) =
             choice_of(planner, &[near(p(1, 0))], &[(p(1, 0), 500)], none);
-        assert_eq!((chosen.pos, chosen.near, choice.cheapest), (Some(p(1, 0)), true, 100));
+        assert_eq!(
+            (chosen.pos, chosen.near, choice.cheapest),
+            (Some(p(1, 0)), true, 100)
+        );
         assert_eq!(choice.best, score);
         // A valued destination skips one without value, undrawn.
         let valued = (
@@ -1067,7 +1170,10 @@ fn the_choice_takes_a_must_go_a_value_over_none_near_over_far_then_the_cost_or_t
             ..candidate(p(4, 4), 10, cost(p(4, 4)))
         };
         let (chosen, _, _, rng) = choice_of(planner, &[must, near(p(1, 0))], &[], none);
-        assert_eq!((chosen.pos, chosen.must_go, rng), (Some(p(4, 4)), true, draws(1)));
+        assert_eq!(
+            (chosen.pos, chosen.must_go, rng),
+            (Some(p(4, 4)), true, draws(1))
+        );
         // Near beats far either way; far against far by the rate.
         let far = |pos| candidate(pos, 10, cost(pos));
         let rich = [(p(4, 4), 1_000_000), (p(0, 6), 100), (p(1, 0), 100)];
@@ -1088,16 +1194,24 @@ fn the_choice_takes_a_must_go_a_value_over_none_near_over_far_then_the_cost_or_t
         let beside = candidate(p(1, 1), 10, 10_000);
         let (chosen, _, _, _) = choice_of(planner, &[beside], &[(p(1, 1), 100)], none);
         assert_eq!((chosen.pos, chosen.near), (Some(p(1, 1)), true));
-        let (chosen, _, _, _) =
-            choice_of(planner, &[near(p(1, 0))], &[(p(1, 0), -100)], (Candidate::NONE, -1000));
+        let (chosen, _, _, _) = choice_of(
+            planner,
+            &[near(p(1, 0))],
+            &[(p(1, 0), -100)],
+            (Candidate::NONE, -1000),
+        );
         assert_eq!((chosen.pos, chosen.near), (Some(p(1, 0)), false));
     });
     let rules = fixture::rules();
     let state = world(&rules, &[], |_| {});
     let case = Case::new(&state, &rules);
     Reads::of(&case).red((&state, &rules), |planner| {
-        let (chosen, _, _, _) =
-            choice_of(planner, &[candidate(p(1, 0), 10, 100)], &[(p(1, 0), 100)], (Candidate::NONE, 0));
+        let (chosen, _, _, _) = choice_of(
+            planner,
+            &[candidate(p(1, 0), 10, 100)],
+            &[(p(1, 0), 100)],
+            (Candidate::NONE, 0),
+        );
         assert_eq!((chosen.pos, chosen.near), (Some(p(1, 0)), false));
     });
 }
@@ -1125,9 +1239,15 @@ fn a_run_starts_from_the_carried_destination_and_writes_the_kept_plan() {
         // The carried score per 100 points of its cost above 100, else whole; its must-go
         // cleared; the plan its tile, nothing beyond.
         let (rate, short, chosen, plan) = run(150, 300);
-        assert_eq!((rate, short, chosen.must_go, chosen.near), (200, true, false, false));
+        assert_eq!(
+            (rate, short, chosen.must_go, chosen.near),
+            (200, true, false, false)
+        );
         let plan = plan.unwrap();
-        assert_eq!((plan.destination, plan.beyond, plan.must_go), (p(3, 0), 0, false));
+        assert_eq!(
+            (plan.destination, plan.beyond, plan.must_go),
+            (p(3, 0), 0, false)
+        );
         assert_eq!(run(50, 300).0, 300);
         // Beyond the points left: the excess.
         let far = points + 5;
@@ -1145,7 +1265,11 @@ fn a_run_starts_from_the_carried_destination_and_writes_the_kept_plan() {
     };
     let reads = Reads::of(&case);
     let valued = Valued::new(&state, &rules, (&reads.record, &reads.weights), fighter);
-    let planner = Planner::new((&state, &rules), &valued, (&reads.record, &reads.danger, false));
+    let planner = Planner::new(
+        (&state, &rules),
+        &valued,
+        (&reads.record, &reads.danger, false),
+    );
     let mut plans = Plans::default();
     let outcome = search_and_walk(&planner, &mut plans, false, &mut stream());
     assert_eq!((outcome, plans), (Outcome::Nothing, Plans::default()));
@@ -1243,8 +1367,9 @@ fn the_search_doubles_its_budget_while_cut_short_without_a_destination_or_with_a
     let points = state.adventure().hero(HERO).unwrap().movement;
     let run = |plans: &mut Plans, alone| {
         let mut rng = stream();
-        let outcome =
-            reads.red((&state, &rules), |planner| search_and_walk(planner, plans, alone, &mut rng));
+        let outcome = reads.red((&state, &rules), |planner| {
+            search_and_walk(planner, plans, alone, &mut rng)
+        });
         (outcome, rng)
     };
     let mut plans = Plans::default();
@@ -1306,7 +1431,14 @@ fn a_hero_on_a_town_waits_there_on_the_week_s_last_day_for_a_poor_destination() 
         for player in [RED] {
             let mut events = Vec::new();
             let end = GameCommand::EndTurn;
-            crate::apply(&mut late, &rules, crate::Actor::Player(player), end, &mut events).unwrap();
+            crate::apply(
+                &mut late,
+                &rules,
+                crate::Actor::Player(player),
+                end,
+                &mut events,
+            )
+            .unwrap();
         }
     }
     let outcome = |state: &GameState| {
@@ -1318,18 +1450,38 @@ fn a_hero_on_a_town_waits_there_on_the_week_s_last_day_for_a_poor_destination() 
     assert_eq!(outcome(&late), Outcome::Waits);
 }
 
-// covers: CPU-PLN-008, CPU-TRN-004
+// covers: CPU-PLN-008, CPU-TRN-004, CPU-TRN-005
 #[test]
-fn a_computer_turn_plans_each_hero_and_keeps_its_destination() {
-    let rules = fixture::rules();
-    let mut state = world(&rules, &[("t:campfire", p(1, 0))], |_| {});
+fn a_computer_turn_plans_each_hero_and_keeps_its_destination_into_the_next_turn() {
+    let rules = crate::computer::towns::tests::rules_sized(40, 12);
+    let mut state = wide_town(&rules, p(0, 0), |s| s.heroes[1].pos = p(11, 11));
     let mut memory = crate::computer::Memory::new();
     let mut rng = stream();
-    let command = crate::computer::choose(&state, &rules, RED, &mut memory, &mut rng);
-    assert_eq!(command, Some(GameCommand::EndTurn));
-    let mut events = Vec::new();
-    crate::apply(&mut state, &rules, crate::Actor::Player(RED), GameCommand::EndTurn, &mut events)
+    let mut play = |state: &mut GameState, player, memory: &mut crate::computer::Memory| {
+        let command = crate::computer::choose(state, &rules, player, memory, &mut rng).unwrap();
+        let mut events = Vec::new();
+        crate::apply(
+            state,
+            &rules,
+            crate::Actor::Player(player),
+            command.clone(),
+            &mut events,
+        )
         .unwrap();
+        command
+    };
+    assert_eq!(play(&mut state, RED, &mut memory), GameCommand::EndTurn);
     let (_, plans) = memory.turn_of(1, || panic!("no turn"), |_| true);
     assert!(plans.get(HERO).is_some());
+    // A plan of a hero red does not own (on the map or in a garrison) is dropped at its next
+    // turn's start.
+    let gone = HeroId::new(9);
+    plans.set(gone, plans.get(HERO));
+    // Blue's turn, then red's next: its hero still its own, the plan kept.
+    let mut blue = crate::computer::Memory::new();
+    assert_eq!(play(&mut state, BLUE, &mut blue), GameCommand::EndTurn);
+    assert_eq!(play(&mut state, RED, &mut memory), GameCommand::EndTurn);
+    let (_, plans) = memory.turn_of(2, || panic!("no turn"), |_| true);
+    assert!(plans.get(HERO).is_some());
+    assert_eq!(plans.get(gone), None);
 }

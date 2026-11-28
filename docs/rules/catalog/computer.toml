@@ -912,7 +912,7 @@ id       = "CPU-PTH-001"
 title    = "The computer's search: its set-up, start, loop and open list"
 context  = "computer"
 status   = "implemented"
-summary  = "The original's computer pathfinder (pathfinder_run 0x56B440 in its modes 1 to 5: the value field's local search, the colleagues' claims, an enemy's reach, the hero's own search and its search again during the walk; h3_adventure::search, E31 T2i0, AI-Q41): from a tile with the caller's start points (also the day's points) and bound, inside a box (the whole map, or the caller's), over two nodes per tile and level (a place to stop, bit 10, and a pass). The start node: cost, second cost and key 0, the danger the tile's, flying and water walking from the hero's levels (none in a boat), a place to stop unless a flying or water-walking hero's tile fails the flight's tile test; in the modes from 3 a start on a monolith's or a Subterranean Gate's entrance goes through it at once (a copy with the visit mark and the second cost plus 50). The open list is kept sorted by the score S (the key, plus the danger past the day's points) and, for an equal S, by the second cost from highest to lowest, a new entry before its equals; the loop takes the back (the highest S, the lowest second cost, the oldest of equals), skips it when the next one is the same node, reloads the node and expands it; a node standing on an entrance (stop) only when the passage past it allows (CPU-PTH-005), a boat node only on water. At 500 entries an insert first drops the back entry, the best (as read: a slip candidate, survey section 5.5 #74). The reached list holds each place-to-stop node once, in the order first reached; the result's nodes are their final values."
+summary  = "The original's computer pathfinder (pathfinder_run 0x56B440 in its modes 1 to 5: the value field's local search, the colleagues' claims, an enemy's reach, the hero's own search and its search again during the walk; h3_adventure::search, E31 T2i0, AI-Q41): from a tile with the caller's start points (also the day's points) and bound, inside a box (the whole map, or the caller's), over two nodes per tile and level (a place to stop, bit 10, and a pass). The start node: cost, second cost and key 0, the danger the tile's, flying and water walking from the hero's levels (none in a boat), a place to stop unless a flying or water-walking hero's tile fails the flight's tile test; in the modes from 3 a start on a monolith's or a Subterranean Gate's entrance goes through it at once (a copy with the visit mark and the second cost plus 50). The open list is kept sorted by the score S (the key, plus the danger past the day's points) and, for an equal S, by the second cost from highest to lowest, a new entry before its equals; the loop takes the back (the highest S, the lowest second cost, the oldest of equals), skips it when the next one is the same node, reloads the node and expands it; a node standing on an entrance (stop) only when the passage past it allows (CPU-PTH-005), a boat node only on water. At 500 entries an insert first drops the back entry, the best (as read: a slip candidate, survey section 5.5 #74). The reached list holds each place-to-stop node once, in the order first reached; the result's nodes are their final values. The value field's search (mode 1) may start open (E31 T2i, AI-Q42; SearchStart::open): its start tile is read as no entrance for the whole search, as ai_hero_destination 0x42E0B0 clears the tile's entrance bit for a class visited from the neighbouring tile (0x42E263, restored at 0x42E37D): no stop there, no closed top and no guard's tile."
 numeric  = "integer"
 
   [[rule.source]]
@@ -996,4 +996,108 @@ numeric  = "integer"
   [[rule.source]]
   kind       = "original-data"
   ref        = "Heroes3.exe code reading (E31 T2i0; survey section 1.11): pathfinder_expand 0x4B2300 (the Door 0x4B2953 to 0x4B29FC and 0x4B2C03, the Fly stretch 0x4B29B7 to 0x4B2ABD, the boat node 0x4B2AE5 to 0x4B2BB8, the sea spells 0x4B2BC3 to 0x4B2C97, the landing 0x4B2890 to 0x4B28B6), pathfinder_relax 0x4B1A70 (the Door's rules 0x4B1B21 to 0x4B1BAF), pathfinder_run 0x56B440 (the jumps' set-up 0x56B4FC to 0x56B731)"
+  confidence = "high"
+
+[[rule]]
+id       = "CPU-PLN-001"
+title    = "The planning: the danger map"
+context  = "computer"
+status   = "implemented"
+summary  = "A computer hero's danger map (ai_danger_map 0x42DE50, called by ai_hero_turn 0x5261F0 at 0x5263B1; survey section 1.3 step 4, 1.9): the turn's tile buffer, an i32 per tile of every level, cleared (0x526378); unless the game is on Easy (game +0x1F6D8 not above 0) and no human plays on the current player's team (team_has_human 0x42B9E0, 0x526381 to 0x5263AA), for each player in order not of the hero's team (and not defeated: none before E10) each hero of its list: the fight estimate of the hero against that hero and its army at no tile and no town (CPU-SIM-012, 0x42DEEF); a negative one runs that hero's computer search from its tile (CPU-PTH-001, mode 3, in a boat as it is, its day's maximum as it would start a turn now plus 300 as bound and points, no danger: the pathfinder's buffer is set only around the hero's search and walk, 0x526568 and 0x526580) and every place it reached adds the result to its tile (wrapping), or with a result below -500 000 000 is written -1 000 000 000. The engine computes it at every hero's turn (the original only for a hero newly selected: a hero is not picked twice in a turn until the walk, T2j); it is not kept in the memory."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E31 T2i): ai_danger_map 0x42DE50 whole (the teams 0x42DE6F to 0x42DEA0, the fight 0x42DEEF to 0x42DF08, the search 0x42DF0E to 0x42DF8F, the marks 0x42DFC0 to 0x42E057), ai_hero_turn 0x5261F0 (0x526351 to 0x5263B1, 0x526568, 0x526580)"
+  confidence = "high"
+
+[[rule]]
+id       = "CPU-PLN-002"
+title    = "The planning: the hero's search, its colleagues' claims and the claimed classes"
+context  = "computer"
+status   = "implemented"
+summary  = "The hero's own search (ai_hero_reach_claims 0x42F570 at 0x42F6B5): mode 4 from its tile (5 from the walk, T2j), the budget as bound, its points left as start points, in a boat when it is, its jumps (CPU-PLN-007), the danger map (CPU-PLN-001) and the fight answers of the object value (ai_fight_answer 0x52BD10) with its kept destination; no boat marks (AI-STUB-2). It returns the danger at the hero's tile. Then the claims: a u16 per tile of every level, 0xFFFF, lowered by each other hero of the player whose tile's place the search reached: its search in mode 2 from its kept destination (else its tile, offset 0), its day's maximum (+0x49) as bound and points, in a boat when the start tile is water, no danger; each place it reached (inside its patrol: AI-STUB-5) lowers its tile's word to its cost plus the offset (16 bits, kept when unsigned less); the offset is the kept cost beyond (+0x41) less its points left (16 bits) when that cost is not above them (a signed 32-bit compare), else 0 (survey section 5.5 number 2, a slip ported as read). The claimed classes (ai_class_tables_init 0x428070) are 0 to 36, one per entry of the 37-entry list rather than the entries (survey section 5.5 number 1, a slip ported as read); the engine's class of a tile is the object value's (CPU-OBJ-001), the classes it merges parted by their parameters (the agent's mapping)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E31 T2i): ai_hero_reach_claims 0x42F570 whole (the search 0x42F64E to 0x42F6B5, the danger 0x42F5EE to 0x42F63C, the colleagues 0x42F6BA to 0x42F950, the offset 0x42F82E to 0x42F84E, the claims 0x42F8CD to 0x42F925), ai_class_tables_init 0x428070, ai_claimed_class_list 0x660540 (its zero at 0x6605D4), pathfinder_construct 0x4B1370 (the buffer none, 0x4B13AE)"
+  confidence = "high"
+
+[[rule]]
+id       = "CPU-PLN-003"
+title    = "The planning: the candidates"
+context  = "computer"
+status   = "implemented"
+summary  = "A computer hero's candidate destinations (ai_hero_candidates 0x42EDD0 but the values it calls and its Grail step): the claims (CPU-PLN-002); on a town's entrance that two or more enemy heroes threaten (town +0x3, the turn start's count, CPU-STA-004) none; one: only the enemy heroes it reaches with its points left, each a must-go (0x42EF7D to 0x42EFF7). Else each place of the reached list from its end: an entrance (explored or not) or an unexplored tile while the player owns a town; inside the patrol (AI-STUB-5); not the hero's own tile; of a claimed class only when no colleague claims it at less cost; its cost the node's second cost (the third argument 0 from ai_hero_destination 0x42E0B0); its value for an unexplored tile while the player owns a town 100, or 100 000 under the turn's flag, else the object value (CPU-OBJ-001, which may change the cost); kept above 0, or at 0 while the hero's tile is in danger. With the mode flag clear (the walk's, T2j) only nodes whose cost is not below their second cost. The Grail step (0x42F35A to 0x42F54E: the player's puzzle target) is not ported: the engine has no Grail on the map nor obelisks (AI-STUB-15)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E31 T2i): ai_hero_candidates 0x42EDD0 whole (the claims' call 0x42EE2C to 0x42EE3E, the threatened town 0x42EE43 to 0x42EEA6 and 0x42EF7D to 0x42EFF7, the tiles 0x42EEC0 to 0x42EF5E, the own tile 0x42EFFB to 0x42F0BB, the claimed class 0x42F0C1 to 0x42F10D, the cost 0x42F116 to 0x42F129, the value 0x42F130 to 0x42F19E, the push 0x42F1A4 to 0x42F345, the Grail 0x42F35A to 0x42F553)"
+  confidence = "high"
+
+[[rule]]
+id       = "CPU-PLN-004"
+title    = "The planning: the value field"
+context  = "computer"
+status   = "implemented"
+summary  = "The candidates' value field (ai_hero_destination 0x42E0B0, 0x42E182 to 0x42E545): an i32 per tile of every level, over the first 32 768 candidates in order (the 16-bit counter): an unexplored candidate's value on its tile; an explored one's over the places a search from it reaches (CPU-PTH-001, mode 1, bound 500, 59 999 points, in a boat on water, the box from 5 tiles before it to 6 after, right and bottom exclusive, clipped to the map; open for a class visited from the neighbouring tile: its entrance bit cleared for the search, 0x42E263 to 0x42E37D): the whole value at a cost up to m, else value x 300 / (cost - m + 300) (i32, the product wrapping, the division truncating). m is 0, or for a class visited from the neighbouring tile the highest cost of the places on the 3 x 3 tiles around it (a place not reached 0; compared as read, the u16 cost against m as a signed word)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E31 T2i): ai_hero_destination 0x42E0B0 (the unexplored 0x42E1C0 to 0x42E23A, the entrance bit 0x42E23F to 0x42E268 and 0x42E357 to 0x42E37D, the box 0x42E26C to 0x42E2F7, the search 0x42E306 to 0x42E33C, m 0x42E37D to 0x42E4A2, the spread 0x42E4A8 to 0x42E539)"
+  confidence = "high"
+
+[[rule]]
+id       = "CPU-PLN-005"
+title    = "The planning: a candidate's score"
+context  = "computer"
+status   = "implemented"
+summary  = "ai_candidate_score 0x42F980: for an explored entrance of a class visited from the neighbouring tile, the candidate's cost moves onto the place it is visited from (its node's cost off, its source's place's cost on) and the score is read at that place; else at its own. The score is the value field there (CPU-PLN-004) plus the node's key, plus its danger while the score is not below -500 000 000; a danger at or below -500 000 000 under a score of 5 000 000 or more is first softened to -2 500 000 in the search's node. For a class entered (a tile without an object too), the monster guarding the tile (find_guarding_monster 0x41A460) but the one its path met adds its object value while the score is not below -500 000 000. The hero's kept destination scores x 1.5 (/ 1.5 below 0; the score stored as an f32, the factor the f32 1.5), truncated, plus 20, and is a must-go when the kept one is; every other candidate draws r = random_between(1, 25) + 75 from the caller's stream: above 0, x r / 100 (32 bits), at least 1; else x (100.0 / r) in double precision, truncated."
+numeric  = "float"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E31 T2i): ai_candidate_score 0x42F980 whole (the moved cost 0x42F99D to 0x42FA6E, the field and key 0x42FA7E to 0x42FAC2, the danger 0x42FABD to 0x42FAE1, the guard 0x42FAE4 to 0x42FB5F, the kept destination 0x42FB64 to 0x42FBDC with the f32 1.5 at 0x63AC78, the draw 0x42FBDF to 0x42FC3B with the f64 100.0 at 0x63A698)"
+  confidence = "high"
+
+[[rule]]
+id       = "CPU-PLN-006"
+title    = "The planning: the choice of a destination"
+context  = "computer"
+status   = "implemented"
+summary  = "ai_hero_destination 0x42E0B0 from 0x42E54A: the destination D carried from the run before, its must-go cleared; the best rate R the danger at the hero's tile, the best node cost 0x7FFF; near within 21 % of the day's maximum (+0x49 x 21 / 100). D none: not near; R negative, valued 0; else valued 1 and, the search not cut short (pathfinder +0x20), a hero on an object's entrance (the hero hidden) not its own town's nor a Sanctuary's (AI-STUB-23) steps off it: of its eight neighbours (step_directions 0x678150) the first on the map with no entrance, no guard, its place reached and a danger not negative, and after it each strictly cheaper; the best cost 0. D some: R its carried score per 100 points of its cost above 100, else the score; the best cost its cost; near when its node's source is the hero's tile or its node's cost is within the 21 %. Each candidate in order, the first 32 768: skipped undrawn when D is valued and it is not; near (N) when its node's source is the hero's tile and it is an entrance, or both its node's cost and its cost are within the 21 %; scored (CPU-PLN-005); its rate the score per 100 points of its cost above 100, at least 1 for a positive score; not near (nor D) when its node's second cost is above its cost, its rate is negative or the player owns no town. Without value and not above R, skipped; a must-go taken; to D without value one with value taken; else near against far, among near the cheaper node (equal: the higher rate), among far the higher rate. Taken: R its rate, D it, the best cost its node's, its score kept; a must-go ends the choice. At the end the hero's kept plan: D's tile (none: -1), the best cost beyond the points left (else 0, a word), D's must-go; R is returned."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E31 T2i): ai_hero_destination 0x42E0B0 (0x42E54A to 0x42EC1B: the start 0x42E559 to 0x42E5F1, D none 0x42E5F7 to 0x42E87D, D some 0x42E882 to 0x42E95C, the candidates 0x42E960 to 0x42EB8B, the end 0x42EB90 to 0x42EBE9), step_directions 0x678150"
+  confidence = "high"
+
+[[rule]]
+id       = "CPU-PLN-007"
+title    = "The planning: the hero's jumps"
+context  = "computer"
+status   = "implemented"
+summary  = "Mode 4's jumps as pathfinder_run 0x56B440 sets them (0x56B4FC to 0x56B731; survey section 1.11, 5.5 number 79), on the hero's spells and masteries on its tile's ground (h3_heroes' queries, ADR-0013 point 2): a spell castable when the hero has it (+0x430, the available spells) and its cost there plus 20 is within its mana (a signed word). Dimension Door so, its leg 300 points, 200 at Expert; Summon Boat when hero_summon_boat_possible 0x4E5550 holds (the spell available, its cost within the mana; a boat summon_boat_choice 0x4E54A0 would bring, or at Advanced off the ground a free boat record, the engine's boats in use below the part's most: the agent's mapping) and no empty boat lies beside the hero; Fly by Angel Wings (level 3) or so (level its mastery there, castable or not); Water Walk by the Boots of Levitation or so, alike; each level lowered to the hero's own of the day's spell (+0x112, +0x116) when that is set and lower."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E31 T2i): pathfinder_run 0x56B440 (0x56B49B to 0x56B4D2, 0x56B4FC to 0x56B731), hero_summon_boat_possible 0x4E5550 whole"
+  confidence = "high"
+
+[[rule]]
+id       = "CPU-PLN-008"
+title    = "The planning: the search loop"
+context  = "computer"
+status   = "implemented"
+summary  = "ai_hero_search_and_walk 0x5267B0 up to the walk: with no kept destination its must-go cleared; the budget 1 000, with a kept destination its cost beyond plus its points left plus 200 if more, 32 000 for a hero alone (the patrol's cap: AI-STUB-5, the cap 32 000); up to five runs of the destination (CPU-PLN-006) on one destination and score carried over: stopped by a destination whose rate is not negative or that is a must-go; else, the search cut short and the budget below the cap, the budget doubled (at most the cap) and run again; else stopped. No destination: asleep, its destination none. On a town's entrance (any town's) with a rate below 75 on the week's seventh day: asleep. Otherwise the walk (ai_hero_walk 0x42FEE0, T2j: AI-STUB-2, the hero asleep). ai_turn_counter 0x691684, which it moves when the hero has not moved today, is a vestige nothing reads: not ported."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E31 T2i): ai_hero_search_and_walk 0x5267B0 (the budget 0x5267BB to 0x526860, the runs 0x526862 to 0x5268C3, the counter 0x5268C5 to 0x526912, no destination 0x52691C to 0x52693C, the town 0x52693F to 0x5269B4, the walk 0x5269B7 to 0x5269D0)"
   confidence = "high"

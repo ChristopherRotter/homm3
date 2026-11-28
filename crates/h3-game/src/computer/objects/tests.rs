@@ -819,9 +819,11 @@ pub(in crate::computer) fn index(k: &str) -> usize {
 }
 
 /// The ring (the core's artifact 4).
-pub(in crate::computer) const RING: h3_content::ArtifactTypeId = h3_content::ArtifactTypeId::from_raw(4);
+pub(in crate::computer) const RING: h3_content::ArtifactTypeId =
+    h3_content::ArtifactTypeId::from_raw(4);
 /// The scroll (the core's artifact 3) and the gust (its spell 0).
-pub(in crate::computer) const SCROLL: h3_content::ArtifactTypeId = h3_content::ArtifactTypeId::from_raw(3);
+pub(in crate::computer) const SCROLL: h3_content::ArtifactTypeId =
+    h3_content::ArtifactTypeId::from_raw(3);
 pub(in crate::computer) const GUST: h3_content::SpellId = h3_content::SpellId::from_raw(0);
 
 /// Pandora's Box's record: 1 000 experience, Attack +1 and Spell Power +2, Lore at Advanced, a
@@ -844,7 +846,10 @@ pub(in crate::computer) fn box_record() -> h3_adventure::RewardRecord {
 }
 
 /// The shared game: [`OBJECTS`] on [`wide`], `edit` made to its setup.
-pub(in crate::computer) fn shared(rules: &GameRuleset, edit: impl FnOnce(&mut GameSetup)) -> GameState {
+pub(in crate::computer) fn shared(
+    rules: &GameRuleset,
+    edit: impl FnOnce(&mut GameSetup),
+) -> GameState {
     let objects = OBJECTS
         .iter()
         .map(|&(k, (x, y))| {
