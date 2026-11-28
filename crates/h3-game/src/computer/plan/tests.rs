@@ -559,3 +559,258 @@ fn summon_boat_is_a_jump_with_a_boat_to_bring_or_room_for_one_at_advanced_but_no
         assert_eq!(jumps.summon_boat, room);
     }
 }
+
+/// What a planner reads besides the game: the record, the weights, the danger map, the flag.
+struct Reads {
+    record: Record,
+    weights: Vec<SignedX87>,
+    danger: Danger,
+    flag: bool,
+}
+
+impl Reads {
+    /// The object value fixture's case reads (its record and weights), no danger, no flag.
+    fn of(case: &Case<'_>) -> Self {
+        Self {
+            record: case.record.clone(),
+            weights: case.weights.clone(),
+            danger: flat(case.state, 0),
+            flag: false,
+        }
+    }
+
+    /// `f` of the planner of `on_map` (its details the game's) on `state`.
+    fn plan<T>(
+        &self,
+        (state, rules): (&GameState, &GameRuleset),
+        on_map: &HeroOnMap,
+        f: impl FnOnce(&Planner<'_>) -> T,
+    ) -> T {
+        let details = state.hero(on_map.id).unwrap();
+        let fighter = Fighter { on_map, details };
+        let valued = Valued::new(state, rules, (&self.record, &self.weights), fighter);
+        let reads = (&self.record, &self.danger, self.flag);
+        f(&Planner::new((state, rules), &valued, reads))
+    }
+
+    /// [`Self::plan`] of red's hero 0 as it stands.
+    fn red<T>(
+        &self,
+        (state, rules): (&GameState, &GameRuleset),
+        f: impl FnOnce(&Planner<'_>) -> T,
+    ) -> T {
+        let on_map = state.adventure().hero(HERO).unwrap();
+        self.plan((state, rules), on_map, f)
+    }
+}
+
+/// The planner's candidates with the kept `plans` and the budget 1 000.
+fn candidates_of(planner: &Planner<'_>, plans: &Plans) -> (i32, Vec<Candidate>) {
+    let kept = plans.get(HERO).map(|plan| plan.destination);
+    let asking = planner.asking(kept);
+    let search = planner.search(1000, asking).unwrap();
+    planner.candidates(&search, plans, asking)
+}
+
+/// The candidate on `pos` among `list`.
+fn at_tile(list: &[Candidate], pos: Pos) -> Option<Candidate> {
+    list.iter().copied().find(|c| c.pos == Some(pos))
+}
+
+// covers: CPU-PLN-003
+#[test]
+fn the_candidates_are_the_reached_entrances_of_value_but_the_hero_s_own_tile() {
+    let rules = fixture::rules();
+    let state = world(&rules, &[("t:campfire", p(1, 0)), ("t:chart", p(0, 1))], |_| {});
+    let case = Case::new(&state, &rules);
+    let reads = Reads::of(&case);
+    let (danger, list) = reads.red((&state, &rules), |planner| {
+        candidates_of(planner, &Plans::default())
+    });
+    // No town: no unexplored tile; the campfire's 55 at its node's second cost; the chart's 0
+    // and the hero's own tile left out.
+    assert_eq!(danger, 0);
+    let campfire = Candidate {
+        pos: Some(p(1, 0)),
+        value: 55,
+        cost: 100,
+        near: false,
+        must_go: false,
+    };
+    assert_eq!(at_tile(&list, p(1, 0)), Some(campfire));
+    assert_eq!(at_tile(&list, p(0, 1)), None);
+    assert_eq!(at_tile(&list, p(0, 0)), None);
+    assert!(list.iter().all(|c| c.pos.is_some_and(|pos| {
+        crate::computer::objects::at(&state, &rules, pos).is_some()
+    })));
+    // In danger on its own tile, the chart's 0 counts: a place to flee to.
+    let fled = Reads {
+        danger: flat(&state, -1),
+        ..Reads::of(&case)
+    };
+    let (danger, list) = fled.red((&state, &rules), |planner| {
+        candidates_of(planner, &Plans::default())
+    });
+    assert_eq!(danger, -1);
+    assert_eq!(at_tile(&list, p(0, 1)).map(|c| c.value), Some(0));
+}
+
+// covers: CPU-PLN-002, CPU-PLN-003
+#[test]
+fn a_colleague_claims_a_claimed_class_it_reaches_more_cheaply_from_its_kept_destination() {
+    let rules = fixture::rules();
+    // Red's second hero 2 on (2, 0), the campfire (class 12) on (3, 0): red's 382 round it
+    // (100 + 141 + 141) against its 100.
+    let state = world(&rules, &[("t:campfire", p(3, 0))], |s| {
+        let mut colleague = s.heroes[0].clone();
+        colleague.pos = p(2, 0);
+        s.heroes.push(colleague);
+    });
+    let case = Case::new(&state, &rules);
+    let reads = Reads::of(&case);
+    let colleague = HeroId::new(2);
+    let points = state.adventure().hero(colleague).unwrap().movement;
+    let points16 = u16::try_from(points).unwrap();
+    let run = |plans: &Plans| {
+        reads.red((&state, &rules), |planner| {
+            let asking = planner.asking(None);
+            let search = planner.search(1000, asking).unwrap();
+            let claims = planner.claims(&search, plans);
+            let list = planner.candidates(&search, plans, asking).1;
+            (claims[planner.index(p(3, 0))], at_tile(&list, p(3, 0)))
+        })
+    };
+    // From its tile, offset 0: claimed at 100, red's 300 left out.
+    let (claim, campfire) = run(&Plans::default());
+    assert_eq!((claim, campfire), (100, None));
+    // A kept destination on (5, 0) with a cost beyond above its points: offset 0, claimed at 200.
+    let mut plans = Plans::default();
+    let far = |beyond| Plan {
+        destination: p(5, 0),
+        beyond,
+        must_go: false,
+    };
+    plans.set(colleague, Some(far(points16 + 1)));
+    let (claim, campfire) = run(&plans);
+    assert_eq!((claim, campfire), (200, None));
+    // A cost beyond not above its points: the offset beyond − points wraps (survey §5.5 #2), the
+    // claim 200 + 0 − points in 16 bits, above red's 300: the campfire stays.
+    plans.set(colleague, Some(far(0)));
+    let (claim, campfire) = run(&plans);
+    assert_eq!(claim, 200_u16.wrapping_sub(points16));
+    assert!(claim > 382);
+    assert_eq!(campfire.map(|c| (c.value, c.cost)), Some((55, 382)));
+    // A colleague the search does not reach claims nothing.
+    let boxed = world(&rules, &[("t:campfire", p(3, 0))], |s| {
+        let mut colleague = s.heroes[0].clone();
+        colleague.pos = p(2, 0);
+        s.heroes.push(colleague);
+        for at in [p(1, 0), p(1, 1), p(0, 1)] {
+            s.map.tiles[usize::from(at.y) * 12 + usize::from(at.x)].terrain = TerrainId::from_raw(1);
+        }
+    });
+    let case = Case::new(&boxed, &rules);
+    let claims = Reads::of(&case).red((&boxed, &rules), |planner| {
+        let search = planner.search(1000, planner.asking(None)).unwrap();
+        planner.claims(&search, &Plans::default())
+    });
+    assert!(claims.iter().all(|&c| c == u16::MAX));
+}
+
+/// A record with red's hero's values and the towns' threats `towns`, for the town fixture.
+fn town_reads(state: &GameState, towns: Vec<(TownId, u8)>) -> Reads {
+    let resources = 2;
+    Reads {
+        record: Record {
+            heroes: vec![(
+                HERO,
+                crate::computer::start::HeroValues {
+                    experience: fixture::f32_bits(1, 2),
+                    spells: crate::computer::spells::SpellGains::default(),
+                },
+            )],
+            towns,
+            artifacts: fixture::f32_bits(1000, 1),
+            ..Record::default()
+        },
+        weights: (0..resources).map(|_| fixture::tenths(1)).collect(),
+        danger: flat(state, 0),
+        flag: false,
+    }
+}
+
+/// The town fixture with red's hero 0 on (1, 1), T0's entrance, `edit` made to its setup.
+fn on_town(rules: &GameRuleset, edit: impl FnOnce(&mut GameSetup)) -> GameState {
+    crate::computer::towns::tests::game(rules, 0, |s| {
+        s.heroes[0].pos = p(1, 1);
+        edit(s);
+    })
+}
+
+// covers: CPU-PLN-003
+#[test]
+fn a_threatened_town_keeps_its_hero_for_an_enemy_hero_in_reach_or_none() {
+    let rules = crate::computer::towns::tests::rules_with(40);
+    let t0 = TownId::new(0);
+    let state = on_town(&rules, |_| {});
+    let strong = |state: &GameState| {
+        let mut on_map = state.adventure().hero(HERO).unwrap().clone();
+        on_map.army = army(&[(IMP, 400), (GOG, 100)]);
+        on_map
+    };
+    let run = |state: &GameState, count: u8, on_map: &HeroOnMap| {
+        let reads = town_reads(state, vec![(t0, count)]);
+        reads.plan((state, &rules), on_map, |planner| {
+            candidates_of(planner, &Plans::default()).1
+        })
+    };
+    // Two threats: none. One: only blue's hero, a must-go.
+    let on_map = strong(&state);
+    assert_eq!(run(&state, 2, &on_map), []);
+    let list = run(&state, 1, &on_map);
+    assert_eq!(list.len(), 1);
+    let blue = list[0];
+    assert_eq!((blue.pos, blue.must_go), (Some(p(2, 2)), true));
+    assert!(blue.value > 0);
+    // Beyond its points left, or an ally's: none.
+    let tired = HeroOnMap {
+        movement: 50,
+        ..on_map.clone()
+    };
+    assert_eq!(run(&state, 1, &tired), []);
+    let allied = on_town(&rules, |s| s.players[1].team = 0);
+    assert_eq!(run(&allied, 1, &strong(&allied)), []);
+}
+
+/// The town fixture on a 12 × 12 map of grass, red's hero 0 on `at`.
+fn wide_town(rules: &GameRuleset, at: Pos, edit: impl FnOnce(&mut GameSetup)) -> GameState {
+    crate::computer::towns::tests::game(rules, 0, |s| {
+        let grass = s.map.tiles[0];
+        s.map.width = 12;
+        s.map.height = 12;
+        s.map.tiles = vec![grass; 144];
+        s.heroes[0].pos = at;
+        edit(s);
+    })
+}
+
+// covers: CPU-PLN-003
+#[test]
+fn with_a_town_the_unexplored_tiles_are_worth_100_or_100_000_under_the_turn_s_flag() {
+    let rules = crate::computer::towns::tests::rules_sized(40, 12);
+    let state = wide_town(&rules, p(0, 0), |_| {});
+    let adventure = state.adventure();
+    let mut reads = town_reads(&state, vec![]);
+    for (flag, value) in [(false, 100), (true, 100_000)] {
+        reads.flag = flag;
+        let list = reads.red((&state, &rules), |planner| {
+            candidates_of(planner, &Plans::default()).1
+        });
+        let unexplored: Vec<_> = list
+            .iter()
+            .filter(|c| !adventure.is_explored(RED, c.pos.unwrap()))
+            .collect();
+        assert!(!unexplored.is_empty());
+        assert!(unexplored.iter().all(|c| c.value == value));
+    }
+}

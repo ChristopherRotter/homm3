@@ -36,6 +36,11 @@ const HUT_AT: Pos = Pos::new(0, 2, 0);
 
 /// The fixture's rules, the gog's AI value `gog`.
 pub(in crate::computer) fn rules_with(gog: u32) -> GameRuleset {
+    rules_sized(gog, 4)
+}
+
+/// [`rules_with`] for maps of `side` tiles at most (E31 T2i: the planning's unexplored tiles).
+pub(in crate::computer) fn rules_sized(gog: u32, side: u16) -> GameRuleset {
     let mut core = towns_core_pack(false);
     for (creature, ai) in core.creatures.iter_mut().zip([10, gog]) {
         creature.info.ai_value = ai;
@@ -96,6 +101,8 @@ pub(in crate::computer) fn rules_with(gog: u32) -> GameRuleset {
         .buildings
         .push(building("university", 22, university));
     rules_with_adventure(core, &towns, |part| {
+        let params = part.params.as_mut().unwrap();
+        params.max_map_size = core::num::NonZeroU16::new(side).unwrap();
         // No starting resources: each test gives red its gold.
         for row in &mut part.starting_resources {
             row.human = vec![];
