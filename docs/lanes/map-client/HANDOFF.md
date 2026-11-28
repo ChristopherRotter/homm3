@@ -34,7 +34,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   without a town on a record, E10), `MCL-STUB-5` (a computer's turn ended at once, E31's
   increment 2), `MCL-STUB-6` (a battle in play ends play, M5 T6), `MCL-STUB-7` (a screen of M6 or
   M7 or an unasked decision: its notice, M5 T6, M6, M7), `MCL-STUB-8` (no timed event's box in
-  play). Next ids **MCL-Q75**, **MCL-STUB-9**.
+  play). Next ids **MCL-Q76**, **MCL-STUB-9**.
 - **Open pull requests** (2026-11-27): T4c's (`map-client/e24-m5-t4c`; T4b's #1201 merged): check it
   first.
   The review branches `map-client/e24-m3-t7-review`, `-m4-t6-review` are not for merging. Merged

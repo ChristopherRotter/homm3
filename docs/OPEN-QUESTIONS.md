@@ -620,6 +620,26 @@ the original's behind `--bugs original` for the comparisons. **Recommended (b)**
 the wrong day on a screen whose bar names the right one; an accident of the chooser's test, as
 MCL-Q72's). Blocks nothing; recorded (`seat-new-day-quick`).
 
+#### MCL-Q75 — The hot seat's clock in battles and level-ups: the original's or the server's (E24 M5 T5, a reading)
+
+Play hosts the hot seat's session in-process and builds its clock itself (`h3_map_client::hot_seat::clock`):
+the turn's duration from the eleven, the level-up waited for (`level_up_ms` none), the server's default
+battle allowance (*provisional*, "T5 reads the original's"). The original's hot seat (the E16 survey
+`docs/epics/E16-timer-survey.md` §6, §7): **every battle pauses the turn's timer** and gives its time
+back, with **no battle clock**, also between two humans; a level-up is on the turn's time (15 s when
+opened with less than 15 s left) and untimed after a battle (inside the pause). The session's clock
+follows SRV-Q31/Q33 (the server's online games, kept by the user there): the turn's timer runs on in a
+battle against a monster or a neutral garrison (at its end the computer plays the side), Fischer's
+chess clocks between two players' sides (the attacker's turn timer stopped), a level-up's own time with
+every other timer stopped. Nothing differs on the map; it matters from M5 T6 (the battles in play) on.
+Options: (a) the server's model in the hot seat too (as built: a hot seat timed as an online game);
+(b) the original's for the hot seat: a clock option of the session's for "battles pause the turn, no
+chess clock" (a request in the server lane's inbox; its online games keep SRV-Q31's), the level-up
+waited for as now; (c) (a) by default, (b) as a game option of the hot seat's. **Recommended (b)**: the
+hot seat is the original's own mode on one machine, and the turn's limit the original's slider names
+is "when not in combat" (the manual, p. 11). Built as (a) meanwhile (no battle is played in play before
+T6, `MCL-STUB-6`). Blocks nothing before T6.
+
 ### RMG lane (`RMG-Q<n>`)
 
 (no open questions)
